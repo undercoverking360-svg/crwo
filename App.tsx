@@ -2875,9 +2875,9 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
                       {/* LEFT COLUMN: INTERACTIVE ENTRY FORM (span 2) */}
-                      <div className="lg:col-span-2 space-y-4">
+                      <div className="lg:col-span-2 flex flex-col space-y-4">
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800/40">
                           <h3 className="text-xs font-bold uppercase tracking-wider font-orbitron text-teal-400 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-teal-400"></span>
@@ -2885,7 +2885,7 @@ export default function App() {
                           </h3>
                         </div>
 
-                      <div className={`p-5 rounded-xl border space-y-4 ${darkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
+                      <div className={`p-5 rounded-xl border space-y-4 flex-1 flex flex-col ${darkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
                         {/* Target Member Dropdown (Visible to all tabs) */}
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
@@ -4052,7 +4052,7 @@ export default function App() {
                     </div>
 
                     {/* RIGHT COLUMN: MEMBER LEDGER, BANK LOGS, CHEQUES, ADVANCES, COMPLAINTS, OR REFERRALS (span 3) */}
-                    <div className="lg:col-span-3 space-y-4">
+                    <div className="lg:col-span-3 flex flex-col space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron">
                           {adminFormTab === 'entry' ? 'Ledger Sheets' : adminFormTab === 'bank' ? 'Registered Bank Accounts' : adminFormTab === 'cheque' ? 'Issued Digital Cheques' : adminFormTab === 'advance' ? 'Advance Requests Log' : adminFormTab === 'complain' ? 'Complaint Tickets Log' : 'Referral Requests Log'}
@@ -4176,8 +4176,7 @@ export default function App() {
                                 <p className="mt-1">Fill the form on the left to add a secured bank account profile for this member.</p>
                               </div>
                             ) : (
-                              <div className="space-y-4 flex-1">
-                                <div className="space-y-3">
+                              <div className="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-1.5 custom-scrollbar">
                                   {Array.isArray(selectedUserBankAccounts) && selectedUserBankAccounts.map((bank, idx) => {
                                     const isInactive = bank.accountStatus === 'INACTIVE';
                                     return (
@@ -4277,8 +4276,7 @@ export default function App() {
                                     );
                                   })}
                                 </div>
-                              </div>
-                            )
+                             )
                           ) : adminFormTab === 'advance' ? (
                             // ADVANCE LIST VIEW IN ADMIN
                             isAdminAdvanceLoading ? (
