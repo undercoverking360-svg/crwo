@@ -246,6 +246,8 @@ export default function App() {
         setTrafficAuthenticated(true);
         setTrafficError('');
         addNotification('Secure portal decrypted successfully.');
+        fetchTrafficRecords();
+        fetchGuideData();
       } else {
         setTrafficError(res.error || 'Access Denied: Invalid gate passcode.');
       }
@@ -1962,7 +1964,7 @@ export default function App() {
   }, [userEmail]);
 
   useEffect(() => {
-    if (trafficPortalOpen) {
+    if (trafficPortalOpen && trafficAuthenticated) {
       try {
         const cached = localStorage.getItem('crwo_traffic_records_cache');
         if (cached) {
@@ -1975,7 +1977,7 @@ export default function App() {
       fetchTrafficRecords();
       fetchGuideData();
     }
-  }, [trafficPortalOpen]);
+  }, [trafficPortalOpen, trafficAuthenticated]);
 
   useEffect(() => {
     try {
