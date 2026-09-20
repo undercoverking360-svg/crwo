@@ -162,6 +162,9 @@ const generateAutoUtr = (email: string, seqNum: number = 1) => {
 };
 
 export default function App() {
+  // Role mode detection for Native User APK
+  const isNativeUserApp = typeof window !== 'undefined' && (window as any).__CRWO_APP_ROLE__ === 'user';
+
   // Theme state
   const [darkMode, setDarkMode] = useState(true);
 
@@ -2103,7 +2106,7 @@ export default function App() {
   }, [userBankDetails]);
 
   // Tab navigation state
-  const [activeTab, setActiveTab] = useState<'admin' | 'kyc' | 'cheque' | 'acDetails' | 'planBook' | 'advance' | 'complain' | 'referral' | 'courier' | 'traffic' | 'idCard'>('admin');
+  const [activeTab, setActiveTab] = useState<'admin' | 'kyc' | 'cheque' | 'acDetails' | 'planBook' | 'advance' | 'complain' | 'referral' | 'courier' | 'traffic' | 'idCard'>(() => isNativeUserApp ? 'idCard' : 'admin');
 
   useEffect(() => {
     if (activeTab === 'courier' && userEmail) {
@@ -2123,9 +2126,9 @@ export default function App() {
     }
   }, [adminFormTab]);
 
-  // Tab navigation items (Hides Admin Terminal when normal user is logged in)
+  // Tab navigation items (Hides Admin Terminal when normal user is logged in or in User APK)
   const navItems = [
-    ...(userEmail ? [] : [{ id: 'admin', label: 'Admin Terminal', mobileLabel: 'Admin', icon: ShieldAlert, alert: true }]),
+    ...(userEmail || isNativeUserApp ? [] : [{ id: 'admin', label: 'Admin Terminal', mobileLabel: 'Admin', icon: ShieldAlert, alert: true }]),
     { id: 'idCard', label: 'CRWO ID Card', mobileLabel: 'ID Card', icon: CreditCard },
     { id: 'kyc', label: 'Registration & KYC', mobileLabel: 'KYC', icon: UserCheck },
     { id: 'cheque', label: 'Cheque Desk', mobileLabel: 'Cheque', icon: FileText },
@@ -2531,135 +2534,243 @@ export default function App() {
             </div>
           </div>
 
-          {/* Row 2: Utilities (4 Columns Grid) */}
-          <div className="grid grid-cols-4 gap-1.5 w-full">
-            {/* Traffic Portal Button */}
-            <button 
-              onClick={() => setTrafficPortalOpen(true)}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                trafficPortalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-teal-400 shrink-0 animate-pulse" />
-              <span className="hidden xs:inline">Traffic</span>
-              <span className="xs:hidden">Tfc</span>
-              <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-slate-850 text-emerald-400 border border-slate-800 shrink-0">1.4G</span>
-            </button>
+          {isNativeUserApp ? (
+            <>
+              {/* Row 2: Utilities Grid (Guide & Community) for User APK */}
+              <div className="grid grid-cols-2 gap-2 w-full mt-0.5">
+                {/* Guide Button */}
+                <button 
+                  onClick={() => setGuideModalOpen(true)}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-[11px] font-bold transition-all duration-200 active:scale-[0.98] cursor-pointer ${
+                    guideModalOpen
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                      : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Guide</span>
+                </button>
 
-            {/* Search Button */}
-            <button 
-              onClick={() => setSearchModalOpen(true)}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                searchModalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <Search className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-              <span>Search</span>
-            </button>
+                {/* Community Button */}
+                <button 
+                  onClick={() => {
+                    fetchCommunityLinks();
+                    setCommunityModalOpen(true);
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg border text-[11px] font-bold transition-all duration-200 active:scale-[0.98] cursor-pointer ${
+                    communityModalOpen
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                      : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>Community</span>
+                </button>
+              </div>
 
-            {/* Guide Button */}
-            <button 
-              onClick={() => setGuideModalOpen(true)}
-              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                guideModalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <HelpCircle className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-              <span>Guide</span>
-            </button>
+              {/* Row 3: Call Help & Actions (Theme Toggle & Login/Signup/Logout) */}
+              <div className="flex items-center justify-between gap-2 w-full mt-0.5">
+                {/* Hotline Call Button */}
+                <button 
+                  onClick={() => { 
+                    const randomId = Math.floor(1000 + Math.random() * 9000);
+                    setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
+                    setCallOpen(true); 
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 border text-[11px] font-bold transition-all duration-200 active:scale-[0.98] cursor-pointer ${
+                    callOpen 
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
+                      : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <PhoneCall className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Call Help</span>
+                </button>
 
-            {/* Discord Community Button */}
-            <button 
-              onClick={() => {
-                fetchCommunityLinks();
-                setCommunityModalOpen(true);
-              }}
-              className={`py-1.5 rounded-lg flex items-center justify-center gap-1 border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                communityModalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span>Discord</span>
-            </button>
-          </div>
-
-          {/* Row 3: Call Help & Actions (Theme Toggle & Login/Signup/Logout) */}
-          <div className="flex items-center justify-between gap-2 w-full mt-0.5">
-            {/* Hotline Call Button */}
-            <button 
-              onClick={() => { 
-                const randomId = Math.floor(1000 + Math.random() * 9000);
-                setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
-                setCallOpen(true); 
-              }}
-              className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 border text-[10px] font-bold transition-all duration-200 ${
-                callOpen 
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
-                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-              <span>Call Help</span>
-            </button>
-
-            {/* Right Side Actions: Theme & Account status */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Theme toggle */}
-              <button 
-                onClick={() => setDarkMode(!darkMode)}
-                className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
-                  darkMode ? 'bg-slate-900 border-slate-800 text-amber-400' : 'bg-slate-50 border-slate-200 text-indigo-650'
-                }`}
-                title="Toggle Theme"
-              >
-                {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-              </button>
-
-              {/* Login / Signup / Logout status */}
-              {userEmail ? (
-                <div className="flex items-center gap-1.5 bg-slate-900/60 p-1 pl-2.5 pr-1.5 rounded-lg border border-slate-800 text-[11px] shrink-0">
-                  <span className="font-bold text-teal-400 truncate max-w-[70px]">{userName || 'Member'}</span>
-                  <button
-                    onClick={() => {
-                      setUserEmail(null);
-                      setUserName(null);
-                      setUserId(null);
-                      setUserLedger([]);
-                      setActiveTab('admin');
-                      addNotification('Logged out successfully.');
-                    }}
-                    className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition"
-                    title="Logout"
-                  >
-                    <LogIn className="w-3.5 h-3.5 rotate-180" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 bg-slate-900/40 p-0.5 rounded-lg border border-slate-800">
+                {/* Right Side Actions: Theme & Account status */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Theme toggle */}
                   <button 
-                    onClick={() => { setLoginTab('login'); setLoginOpen(true); }}
-                    className="px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+                    onClick={() => setDarkMode(!darkMode)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 active:scale-[0.95] cursor-pointer ${
+                      darkMode ? 'bg-slate-900 border-slate-800 text-amber-400' : 'bg-slate-50 border-slate-200 text-indigo-650'
+                    }`}
+                    title="Toggle Theme"
                   >
-                    Login
+                    {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
                   </button>
-                  <button 
-                    onClick={() => { setLoginTab('signup'); setLoginOpen(true); }}
-                    className="px-2 py-1 text-[10px] font-bold bg-teal-500 text-slate-950 hover:bg-teal-400 rounded"
-                  >
-                    Sign Up
-                  </button>
+
+                  {/* Login / Signup / Logout status */}
+                  {userEmail ? (
+                    <div className="flex items-center gap-1.5 bg-slate-900/60 p-1 pl-2.5 pr-1.5 rounded-lg border border-slate-800 text-[11px] shrink-0">
+                      <span className="font-bold text-teal-400 truncate max-w-[70px]">{userName || 'Member'}</span>
+                      <button
+                        onClick={() => {
+                          setUserEmail(null);
+                          setUserName(null);
+                          setUserId(null);
+                          setUserLedger([]);
+                          setActiveTab('idCard');
+                          addNotification('Logged out successfully.');
+                        }}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition cursor-pointer"
+                        title="Logout"
+                      >
+                        <LogIn className="w-3.5 h-3.5 rotate-180" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-slate-900/40 p-0.5 rounded-lg border border-slate-800">
+                      <button 
+                        onClick={() => { setLoginTab('login'); setLoginOpen(true); }}
+                        className="px-2.5 py-1 text-[10px] font-bold text-slate-300 hover:text-white cursor-pointer"
+                      >
+                        Login
+                      </button>
+                      <button 
+                        onClick={() => { setLoginTab('signup'); setLoginOpen(true); }}
+                        className="px-2.5 py-1 text-[10px] font-bold bg-teal-500 text-slate-950 hover:bg-teal-400 rounded cursor-pointer"
+                      >
+                        Sign Up
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Row 2: Utilities (4 Columns Grid) for Website */}
+              <div className="grid grid-cols-4 gap-1.5 w-full">
+                {/* Traffic Portal Button */}
+                <button 
+                  onClick={() => setTrafficPortalOpen(true)}
+                  className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                    trafficPortalOpen
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                      : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5 text-teal-400 shrink-0 animate-pulse" />
+                  <span className="hidden xs:inline">Traffic</span>
+                  <span className="xs:hidden">Tfc</span>
+                  <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-slate-850 text-emerald-400 border border-slate-800 shrink-0">1.4G</span>
+                </button>
+
+                {/* Search Button */}
+                <button 
+                  onClick={() => setSearchModalOpen(true)}
+                  className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                    searchModalOpen
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                      : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <Search className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Search</span>
+                </button>
+
+                {/* Guide Button */}
+                <button 
+                  onClick={() => setGuideModalOpen(true)}
+                  className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                    guideModalOpen
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                      : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Guide</span>
+                </button>
+
+                {/* Discord Community Button */}
+                <button 
+                  onClick={() => {
+                    fetchCommunityLinks();
+                    setCommunityModalOpen(true);
+                  }}
+                  className={`py-1.5 rounded-lg flex items-center justify-center gap-1 border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                    communityModalOpen
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                      : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>Discord</span>
+                </button>
+              </div>
+
+              {/* Row 3: Call Help & Actions (Theme Toggle & Login/Signup/Logout) */}
+              <div className="flex items-center justify-between gap-2 w-full mt-0.5">
+                {/* Hotline Call Button */}
+                <button 
+                  onClick={() => { 
+                    const randomId = Math.floor(1000 + Math.random() * 9000);
+                    setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
+                    setCallOpen(true); 
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 border text-[10px] font-bold transition-all duration-200 ${
+                    callOpen 
+                      ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
+                      : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                  }`}
+                >
+                  <PhoneCall className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                  <span>Call Help</span>
+                </button>
+
+                {/* Right Side Actions: Theme & Account status */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Theme toggle */}
+                  <button 
+                    onClick={() => setDarkMode(!darkMode)}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 ${
+                      darkMode ? 'bg-slate-900 border-slate-800 text-amber-400' : 'bg-slate-50 border-slate-200 text-indigo-650'
+                    }`}
+                    title="Toggle Theme"
+                  >
+                    {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+                  </button>
+
+                  {/* Login / Signup / Logout status */}
+                  {userEmail ? (
+                    <div className="flex items-center gap-1.5 bg-slate-900/60 p-1 pl-2.5 pr-1.5 rounded-lg border border-slate-800 text-[11px] shrink-0">
+                      <span className="font-bold text-teal-400 truncate max-w-[70px]">{userName || 'Member'}</span>
+                      <button
+                        onClick={() => {
+                          setUserEmail(null);
+                          setUserName(null);
+                          setUserId(null);
+                          setUserLedger([]);
+                          setActiveTab('admin');
+                          addNotification('Logged out successfully.');
+                        }}
+                        className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition"
+                        title="Logout"
+                      >
+                        <LogIn className="w-3.5 h-3.5 rotate-180" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1 bg-slate-900/40 p-0.5 rounded-lg border border-slate-800">
+                      <button 
+                        onClick={() => { setLoginTab('login'); setLoginOpen(true); }}
+                        className="px-2 py-1 text-[10px] font-bold text-slate-300 hover:text-white"
+                      >
+                        Login
+                      </button>
+                      <button 
+                        onClick={() => { setLoginTab('signup'); setLoginOpen(true); }}
+                        className="px-2 py-1 text-[10px] font-bold bg-teal-500 text-slate-950 hover:bg-teal-400 rounded"
+                      >
+                        Sign Up
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Desktop Header (1-Line Layout) */}
@@ -2686,32 +2797,36 @@ export default function App() {
 
           {/* Desktop Actions & Utilities */}
           <div className="flex items-center gap-2.5">
-            {/* Traffic Portal Button */}
-            <button 
-              onClick={() => setTrafficPortalOpen(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                trafficPortalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
-                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
-              <span>Traffic Portal</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-850 text-emerald-400 border border-slate-800">1.4 Gbps</span>
-            </button>
+            {/* Traffic Portal Button (Hidden in User APK) */}
+            {!isNativeUserApp && (
+              <button 
+                onClick={() => setTrafficPortalOpen(true)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  trafficPortalOpen
+                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
+                    : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+                <span>Traffic Portal</span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-850 text-emerald-400 border border-slate-800">1.4 Gbps</span>
+              </button>
+            )}
 
-            {/* Search Button */}
-            <button 
-              onClick={() => setSearchModalOpen(true)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                searchModalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
-                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-              }`}
-            >
-              <Search className="w-3.5 h-3.5 text-teal-400" />
-              <span>Search</span>
-            </button>
+            {/* Search Button (Hidden in User APK) */}
+            {!isNativeUserApp && (
+              <button 
+                onClick={() => setSearchModalOpen(true)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                  searchModalOpen
+                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
+                    : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+                }`}
+              >
+                <Search className="w-3.5 h-3.5 text-teal-400" />
+                <span>Search</span>
+              </button>
+            )}
 
             {/* Guide Button */}
             <button 
