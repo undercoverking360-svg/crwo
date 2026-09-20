@@ -39,7 +39,8 @@ import {
   Pencil,
   Package,
   Truck,
-  Printer
+  Printer,
+  Lock
 } from 'lucide-react';
 
 import { verifyAdminWithFirebase, verifyTrafficPasscodeWithFirebase, verifySearchPasscodeWithFirebase } from './firebase';
@@ -1708,6 +1709,12 @@ export default function App() {
       setActiveTab('idCard');
     }
   }, [userEmail]);
+
+  useEffect(() => {
+    if (activeTab === 'planBook' && userEmail && !userKyc && !isUserKycLoading) {
+      fetchUserKyc(userEmail);
+    }
+  }, [activeTab, userEmail]);
 
   useEffect(() => {
     if (trafficPortalOpen) {
@@ -5162,29 +5169,104 @@ export default function App() {
                       </p>
                     </div>
 
-                    {/* Attractive Glowing Download Button */}
-                    <a
-                      href="https://drive.google.com/uc?export=download&id=1eZ6lYBxHzxo2148aEw0xaxSSNPFmX0BN"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 hover:from-teal-300 hover:to-emerald-400 transition-all duration-300 shadow-lg shadow-teal-500/20 hover:scale-105 transform uppercase tracking-wider shrink-0 cursor-pointer"
-                    >
-                      <Download className="w-4 h-4 text-slate-950 animate-bounce" />
-                      <span>Download Plan Book (PDF)</span>
-                    </a>
+                    {userEmail && (
+                      <div className="flex items-center gap-3">
+                        {userKyc && (userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED') ? (
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                              KYC APPROVED • UNLOCKED
+                            </span>
+                            {/* Attractive Glowing Download Button */}
+                            <a
+                              href="https://drive.google.com/uc?export=download&id=1eZ6lYBxHzxo2148aEw0xaxSSNPFmX0BN"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 hover:from-teal-300 hover:to-emerald-400 transition-all duration-300 shadow-lg shadow-teal-500/20 hover:scale-105 transform uppercase tracking-wider shrink-0 cursor-pointer"
+                            >
+                              <Download className="w-4 h-4 text-slate-950 animate-bounce" />
+                              <span>Download Plan Book (PDF)</span>
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                            KYC REQUIRED • ACCESS LOCKED
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Fullscreen PDF Embedded Preview */}
-                  <div className={`w-full rounded-2xl border overflow-hidden shadow-2xl relative ${darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-                    <div className="w-full h-[750px] relative">
-                      <iframe
-                        src="https://drive.google.com/file/d/1eZ6lYBxHzxo2148aEw0xaxSSNPFmX0BN/preview"
-                        title="CRWO Official Welfare Plan Book PDF"
-                        className="w-full h-full border-0 rounded-2xl"
-                        allow="autoplay"
-                      ></iframe>
+                  {/* 1. ANONYMOUS / PUBLIC GATE */}
+                  {!userEmail ? (
+                    <AnonymousLogo
+                      title="CRWO WELFARE PLAN BOOK LOCKED"
+                      subtitle="Public access to the official Welfare Plan Book is restricted. Please log in or sign up to your CRWO member account and obtain KYC approval to view and download confidential welfare plan guidelines."
+                      onLoginClick={() => { setLoginTab('login'); setLoginOpen(true); }}
+                    />
+                  ) : isUserKycLoading ? (
+                    <div className="flex flex-col items-center justify-center py-24 gap-3 text-slate-400">
+                      <span className="w-6 h-6 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                      <span className="text-xs font-mono">Verifying member KYC authorization status...</span>
                     </div>
-                  </div>
+                  ) : !(userKyc && (userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED')) ? (
+                    /* 2. LOGGED IN BUT KYC NOT APPROVED GATE */
+                    <div className="flex flex-col items-center justify-center py-12 px-4">
+                      <div className="w-full max-w-lg p-8 rounded-2xl border-2 border-amber-500/30 backdrop-blur-xl relative overflow-hidden bg-slate-950/70 shadow-2xl text-center space-y-5">
+                        <div className="absolute -top-12 -left-12 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none"></div>
+                        <div className="w-16 h-16 mx-auto rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.25)]">
+                          <Lock className="w-8 h-8" />
+                        </div>
+                        
+                        <div>
+                          <h3 className="text-base font-bold font-orbitron uppercase tracking-wider text-amber-400">
+                            {userKyc ? (userKyc.status === 'REJECTED' ? 'KYC VERIFICATION REJECTED' : 'KYC APPROVAL REQUIRED') : 'KYC VERIFICATION NOT SUBMITTED'}
+                          </h3>
+                          <p className="text-xs text-slate-300 mt-2 leading-relaxed">
+                            {userKyc
+                              ? userKyc.status === 'REJECTED'
+                                ? 'Your previous KYC request was rejected. Please update and resubmit your KYC details in the KYC portal to gain access to the Welfare Plan Book.'
+                                : 'Your KYC verification request is currently under review by CRWO admin. Official Welfare Plan Book access and download will be automatically unlocked as soon as your KYC status is APPROVED / VERIFIED.'
+                              : 'You are signed in, but your CRWO member KYC has not been submitted yet. The Welfare Plan Book is confidential and strictly accessible only to verified and approved CRWO members.'}
+                          </p>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono">
+                          <span className="text-slate-400">Current KYC Status:</span>
+                          <span className={`font-bold ${
+                            userKyc?.status === 'REJECTED' ? 'text-rose-400' :
+                            userKyc?.status ? 'text-amber-400 animate-pulse' :
+                            'text-slate-400'
+                          }`}>
+                            {userKyc?.status || 'NOT SUBMITTED'}
+                          </span>
+                        </div>
+
+                        <div className="pt-2">
+                          <button
+                            onClick={() => setActiveTab('kyc')}
+                            className="px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-teal-500 to-emerald-400 text-slate-950 hover:from-teal-400 hover:to-emerald-300 transition-all font-orbitron shadow-lg shadow-teal-500/20 cursor-pointer"
+                          >
+                            {userKyc ? (userKyc.status === 'REJECTED' ? 'Resubmit KYC Details' : 'Check KYC Portal') : 'Submit KYC Details Now'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* 3. UNLOCKED: Fullscreen PDF Embedded Preview */
+                    <div className={`w-full rounded-2xl border overflow-hidden shadow-2xl relative ${darkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+                      <div className="w-full h-[750px] relative">
+                        <iframe
+                          src="https://drive.google.com/file/d/1eZ6lYBxHzxo2148aEw0xaxSSNPFmX0BN/preview"
+                          title="CRWO Official Welfare Plan Book PDF"
+                          className="w-full h-full border-0 rounded-2xl"
+                          allow="autoplay"
+                        ></iframe>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
