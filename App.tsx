@@ -40,10 +40,7 @@ import {
   Package,
   Truck,
   Printer,
-  Lock,
-  User,
-  Mail,
-  ArrowRight
+  Lock
 } from 'lucide-react';
 
 import { verifyAdminWithFirebase, verifyTrafficPasscodeWithFirebase, verifySearchPasscodeWithFirebase } from './firebase';
@@ -167,31 +164,6 @@ const generateAutoUtr = (email: string, seqNum: number = 1) => {
 export default function App() {
   // Theme state
   const [darkMode, setDarkMode] = useState(true);
-
-  // App Role Mode ('user' for CRWO User, 'admin' for CRWO Admin)
-  const [appRole, setAppRole] = useState<'user' | 'admin'>(() => {
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const qRole = params.get('app') || params.get('role');
-      if (qRole === 'user' || qRole === 'admin') return qRole;
-      if ((window as any).__CRWO_APP_ROLE__) return (window as any).__CRWO_APP_ROLE__;
-      const stored = localStorage.getItem('crwo_app_role');
-      if (stored === 'user' || stored === 'admin') return stored;
-    } catch {}
-    return 'user';
-  });
-
-  const changeAppRole = (role: 'user' | 'admin') => {
-    setAppRole(role);
-    try {
-      localStorage.setItem('crwo_app_role', role);
-    } catch {}
-    if (role === 'admin') {
-      setActiveTab('admin');
-    } else {
-      setActiveTab('idCard');
-    }
-  };
 
   // Guide video player ref
   const guideVideoPlayerRef = React.useRef<HTMLVideoElement>(null);
@@ -649,17 +621,8 @@ export default function App() {
   const [blacklistReason, setBlacklistReason] = useState('');
   const [securitySubmitLoading, setSecuritySubmitLoading] = useState(false);
 
+  // Active traffic view sub-tab
   const [trafficTab, setTrafficTab] = useState<'database' | 'loss_fund' | 'turnover' | 'holders' | 'manager_comm' | 'head_comm' | 'logs' | 'admin_console' | 'video_log'>('logs');
-
-  // Community Portal Modal & Admin States
-  const [communityModalOpen, setCommunityModalOpen] = useState(false);
-  const [communityLinks, setCommunityLinks] = useState<any[]>([]);
-  const [isCommunityLoading, setIsCommunityLoading] = useState(false);
-  const [commPlatform, setCommPlatform] = useState('DISCORD');
-  const [commTitle, setCommTitle] = useState('');
-  const [commLogo, setCommLogo] = useState('');
-  const [commJoinLink, setCommJoinLink] = useState('');
-  const [commSubmitLoading, setCommSubmitLoading] = useState(false);
 
   // Search Button Modal state
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -889,67 +852,6 @@ export default function App() {
       addNotification("Connection error.");
     } finally {
       setAdminVideoSubmitLoading(false);
-    }
-  };
-
-  const fetchCommunityLinks = async () => {
-    setIsCommunityLoading(true);
-    try {
-      const res = await callApi({ action: 'getCommunityLinks' });
-      if (res.success && Array.isArray(res.data)) {
-        setCommunityLinks(res.data);
-      } else {
-        setCommunityLinks([]);
-      }
-    } catch (err) {
-      console.error("fetchCommunityLinks error:", err);
-      setCommunityLinks([]);
-    } finally {
-      setIsCommunityLoading(false);
-    }
-  };
-
-  const handleAddCommunityLink = async () => {
-    if (!commPlatform.trim() || !commTitle.trim() || !commJoinLink.trim()) {
-      addNotification("Platform, Title, and Permanent Joining Link are required.");
-      return;
-    }
-    setCommSubmitLoading(true);
-    try {
-      const res = await callApi({
-        action: 'addCommunityLink',
-        platform: commPlatform.trim(),
-        title: commTitle.trim(),
-        logo: commLogo.trim(),
-        link: commJoinLink.trim()
-      });
-      if (res.success) {
-        addNotification("Community Platform Link added successfully!");
-        setCommTitle('');
-        setCommLogo('');
-        setCommJoinLink('');
-        fetchCommunityLinks();
-      } else {
-        addNotification(res.message || "Failed to add community link.");
-      }
-    } catch (err) {
-      console.error(err);
-      addNotification("Connection error.");
-    } finally {
-      setCommSubmitLoading(false);
-    }
-  };
-
-  const handleDeleteCommunityLink = async (id: number) => {
-    if (!confirm("Are you sure you want to remove this community link?")) return;
-    try {
-      const res = await callApi({ action: 'deleteCommunityLink', id });
-      if (res.success) {
-        addNotification("Community link removed.");
-        fetchCommunityLinks();
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -1964,7 +1866,7 @@ export default function App() {
   }, [userEmail]);
 
   useEffect(() => {
-    if (trafficPortalOpen && trafficAuthenticated) {
+    if (trafficPortalOpen) {
       try {
         const cached = localStorage.getItem('crwo_traffic_records_cache');
         if (cached) {
@@ -2053,7 +1955,6 @@ export default function App() {
     initSecurity();
     fetchSearchData();
     fetchGuideData();
-    fetchCommunityLinks();
   }, []);
 
   // Automatically log device info whenever a user is authenticated (Login / Signup)
@@ -2106,9 +2007,7 @@ export default function App() {
   }, [userBankDetails]);
 
   // Tab navigation state
-  const [activeTab, setActiveTab] = useState<'admin' | 'kyc' | 'cheque' | 'acDetails' | 'planBook' | 'advance' | 'complain' | 'referral' | 'courier' | 'traffic' | 'idCard'>(() => {
-    return appRole === 'admin' ? 'admin' : 'idCard';
-  });
+  const [activeTab, setActiveTab] = useState<'admin' | 'kyc' | 'cheque' | 'acDetails' | 'planBook' | 'advance' | 'complain' | 'referral' | 'courier' | 'traffic' | 'idCard'>('admin');
 
   useEffect(() => {
     if (activeTab === 'courier' && userEmail) {
@@ -2128,9 +2027,9 @@ export default function App() {
     }
   }, [adminFormTab]);
 
-  // Tab navigation items (Only show Admin Terminal if in admin mode and user is not logged in as a normal member)
+  // Tab navigation items (Hides Admin Terminal when normal user is logged in)
   const navItems = [
-    ...(appRole === 'admin' && !userEmail ? [{ id: 'admin', label: 'Admin Terminal', mobileLabel: 'Admin', icon: ShieldAlert, alert: true }] : []),
+    ...(userEmail ? [] : [{ id: 'admin', label: 'Admin Terminal', mobileLabel: 'Admin', icon: ShieldAlert, alert: true }]),
     { id: 'idCard', label: 'CRWO ID Card', mobileLabel: 'ID Card', icon: CreditCard },
     { id: 'kyc', label: 'Registration & KYC', mobileLabel: 'KYC', icon: UserCheck },
     { id: 'cheque', label: 'Cheque Desk', mobileLabel: 'Cheque', icon: FileText },
@@ -2147,95 +2046,6 @@ export default function App() {
   const [currentCallRoom, setCurrentCallRoom] = useState('');
   const [loginOpen, setLoginOpen] = useState(false);
   const [loginTab, setLoginTab] = useState<'login' | 'signup'>('login');
-
-  // Unified User Auth Submit Handler (used by modal & centered login)
-  const handleUserAuthSubmit = async (tabOverride?: 'login' | 'signup') => {
-    const targetTab = tabOverride || loginTab;
-    if (!authEmail || !authPassword) {
-      addNotification('Please enter email and password.');
-      return;
-    }
-    setAuthLoading(true);
-    try {
-      let devId = localStorage.getItem('crwo_device_id') || '';
-      if (!devId) {
-        devId = 'device-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem('crwo_device_id', devId);
-      }
-      setDeviceUuid(devId);
-
-      let ip = clientIpAddress || '';
-      if (!ip) {
-        try {
-          const ipRes = await fetch('https://api.ipify.org?format=json');
-          const ipJson = await ipRes.json();
-          ip = ipJson.ip || '';
-        } catch {}
-        if (ip) setClientIpAddress(ip);
-      }
-
-      const checkRes = await callApi({ action: 'checkBlacklist', email: authEmail, deviceUuid: devId, ipAddress: ip });
-      if (checkRes && checkRes.isBlocked) {
-        setIsBlocked(true);
-        setBlockReason(checkRes.reason || 'Account blocked by admin.');
-        setAuthLoading(false);
-        setLoginOpen(false);
-        return;
-      }
-
-      if (targetTab === 'login') {
-        const res = await callApi({ action: 'login', email: authEmail, password: authPassword });
-        if (res.success) {
-          addNotification(`Welcome back, ${res.name || authEmail}!`);
-          callApi({ action: 'logUserDevice', email: res.email, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
-          setUserEmail(res.email);
-          setUserName(res.name || '');
-          setUserId(res.userId || '');
-          setUserJoinedDate(res.joinedDate || '');
-          fetchIdCardDetails(res.email);
-          fetchUserCouriers(res.email);
-          setLoginOpen(false);
-          setAuthEmail('');
-          setAuthPassword('');
-          fetchUserLedger(res.email);
-          fetchUserBankDetails(res.email);
-          setActiveTab('idCard');
-        } else {
-          addNotification(res.message || 'Login failed. Invalid credentials.');
-        }
-      } else {
-        if (!authName) {
-          addNotification('Please enter your full name.');
-          setAuthLoading(false);
-          return;
-        }
-        const res = await callApi({ action: 'signup', email: authEmail, password: authPassword, name: authName });
-        if (res.success) {
-          addNotification('Signup successful! Auto-logging in...');
-          callApi({ action: 'logUserDevice', email: authEmail, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
-          setUserEmail(authEmail);
-          setUserName(authName);
-          setUserId(res.userId);
-          setUserJoinedDate(new Date().toLocaleDateString());
-          fetchIdCardDetails(authEmail);
-          setLoginOpen(false);
-          setAuthEmail('');
-          setAuthPassword('');
-          setAuthName('');
-          fetchUserLedger(authEmail);
-          fetchUserBankDetails(authEmail);
-          setActiveTab('idCard');
-        } else {
-          addNotification(res.message || 'Signup failed.');
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      addNotification('Connection error. Please try again.');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
   
   // Call status simulator
   const [callMuted, setCallMuted] = useState(false);
@@ -2606,87 +2416,54 @@ export default function App() {
       <header className={`sticky top-0 z-40 border-b backdrop-blur-md transition-all duration-300 ${darkMode ? 'bg-slate-950/90 border-slate-800/80' : 'bg-white/90 border-slate-200'}`}>
         {/* Mobile Header (Centered Logo + Clean Row Structure) */}
         <div className="flex flex-col gap-2.5 md:hidden px-3.5 py-2.5 w-full">
-          {/* Row 1: Logo, Title with Role Badge & Mode Switcher */}
-          <div className="flex items-center justify-between w-full">
+          {/* Row 1: Centered Logo & Title */}
+          <div className="flex items-center justify-center w-full">
             <div className="flex items-center gap-2">
               <div className="relative shrink-0 flex items-center justify-center">
                 <CrwoLogo className="w-8 h-8" />
               </div>
               <div className="leading-none">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <span className={`text-base font-bold font-orbitron tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                     CRWO
                   </span>
-                  <span className={`px-1.5 py-0.5 text-[8px] font-bold rounded uppercase tracking-wider ${
-                    appRole === 'user' 
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  }`}>
-                    {appRole === 'user' ? 'USER' : 'ADMIN'}
+                  <span className="px-1.5 py-0.2 text-[8px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 rounded">
+                    V2.0
                   </span>
                 </div>
-                <span className={`text-[8px] tracking-wider uppercase block mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {appRole === 'user' ? 'Member Portal' : 'Central Admin'}
-                </span>
               </div>
             </div>
-
-            {/* Portal Switcher */}
-            {!(window as any).__CRWO_APP_ROLE__ && (
-              <div className="flex items-center p-0.5 rounded-lg border border-slate-800 bg-slate-900/60 text-[9px] font-bold">
-                <button
-                  onClick={() => changeAppRole('user')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    appRole === 'user' ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  USER
-                </button>
-                <button
-                  onClick={() => changeAppRole('admin')}
-                  className={`px-2 py-0.5 rounded transition ${
-                    appRole === 'admin' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  ADMIN
-                </button>
-              </div>
-            )}
           </div>
 
-          {/* Row 2: Utilities (Dynamic grid depending on admin vs user) */}
-          <div className={`grid ${appRole === 'admin' ? 'grid-cols-4' : 'grid-cols-2'} gap-1.5 w-full`}>
-            {/* Traffic Portal Button (Admin only) */}
-            {appRole === 'admin' && (
-              <button 
-                onClick={() => setTrafficPortalOpen(true)}
-                className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                  trafficPortalOpen
-                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                    : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5 text-teal-400 shrink-0 animate-pulse" />
-                <span className="hidden xs:inline">Traffic</span>
-                <span className="xs:hidden">Tfc</span>
-                <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-slate-850 text-emerald-400 border border-slate-800 shrink-0">1.4G</span>
-              </button>
-            )}
+          {/* Row 2: Utilities (4 Columns Grid) */}
+          <div className="grid grid-cols-4 gap-1.5 w-full">
+            {/* Traffic Portal Button */}
+            <button 
+              onClick={() => setTrafficPortalOpen(true)}
+              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                trafficPortalOpen
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-teal-400 shrink-0 animate-pulse" />
+              <span className="hidden xs:inline">Traffic</span>
+              <span className="xs:hidden">Tfc</span>
+              <span className="px-1 py-0.2 rounded text-[8px] font-mono bg-slate-850 text-emerald-400 border border-slate-800 shrink-0">1.4G</span>
+            </button>
 
-            {/* Search Button (Admin only) */}
-            {appRole === 'admin' && (
-              <button 
-                onClick={() => setSearchModalOpen(true)}
-                className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                  searchModalOpen
-                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                    : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-                }`}
-              >
-                <Search className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                <span>Search</span>
-              </button>
-            )}
+            {/* Search Button */}
+            <button 
+              onClick={() => setSearchModalOpen(true)}
+              className={`flex items-center justify-center gap-1 py-1.5 rounded-lg border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                searchModalOpen
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              }`}
+            >
+              <Search className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <span>Search</span>
+            </button>
 
             {/* Guide Button */}
             <button 
@@ -2701,43 +2478,39 @@ export default function App() {
               <span>Guide</span>
             </button>
 
-            {/* Community Groups Button */}
+            {/* Discord Community Button */}
             <button 
               onClick={() => {
-                fetchCommunityLinks();
-                setCommunityModalOpen(true);
+                window.open(DISCORD_INVITE_URL, "_blank");
+                addNotification("Opening CRWO Discord Server...");
               }}
-              className={`py-1.5 rounded-lg flex items-center justify-center gap-1 border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
-                communityModalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
-                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              className={`py-1.5 rounded-lg flex items-center justify-center gap-1 border text-[10px] font-bold transition-all duration-200 ${
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span>Community</span>
+              <span>Discord</span>
             </button>
           </div>
 
           {/* Row 3: Call Help & Actions (Theme Toggle & Login/Signup/Logout) */}
           <div className="flex items-center justify-between gap-2 w-full mt-0.5">
-            {/* Hotline Call Button (Admin only) */}
-            {appRole === 'admin' && (
-              <button 
-                onClick={() => { 
-                  const randomId = Math.floor(1000 + Math.random() * 9000);
-                  setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
-                  setCallOpen(true); 
-                }}
-                className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 border text-[10px] font-bold transition-all duration-200 ${
-                  callOpen 
-                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
-                    : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-                }`}
-              >
-                <PhoneCall className="w-3.5 h-3.5 text-teal-400 shrink-0" />
-                <span>Call Help</span>
-              </button>
-            )}
+            {/* Hotline Call Button */}
+            <button 
+              onClick={() => { 
+                const randomId = Math.floor(1000 + Math.random() * 9000);
+                setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
+                setCallOpen(true); 
+              }}
+              className={`flex-1 py-1.5 rounded-lg flex items-center justify-center gap-1.5 border text-[10px] font-bold transition-all duration-200 ${
+                callOpen 
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
+                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              }`}
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              <span>Call Help</span>
+            </button>
 
             {/* Right Side Actions: Theme & Account status */}
             <div className="flex items-center gap-1.5 shrink-0">
@@ -2762,7 +2535,7 @@ export default function App() {
                       setUserName(null);
                       setUserId(null);
                       setUserLedger([]);
-                      setActiveTab(appRole === 'admin' ? 'admin' : 'idCard');
+                      setActiveTab('admin');
                       addNotification('Logged out successfully.');
                     }}
                     className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-rose-400 transition"
@@ -2799,81 +2572,48 @@ export default function App() {
               <CrwoLogo className="w-11 h-11" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className={`text-xl font-bold font-orbitron tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   CRWO
                 </span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                  appRole === 'user' 
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                }`}>
-                  {appRole === 'user' ? 'USER V2.0' : 'ADMIN TERMINAL'}
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                  V2.0
                 </span>
               </div>
               <p className={`text-[10px] uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                {appRole === 'user' ? 'Cryptocurrency Welfare Organisation • Member Portal' : 'Cryptocurrency Welfare Organisation • Central Command'}
+                Cryptocurrency Welfare Organisation
               </p>
             </div>
           </div>
 
           {/* Desktop Actions & Utilities */}
           <div className="flex items-center gap-2.5">
-            {/* Mode Switcher on Web (CRWO User vs CRWO Admin) */}
-            {!(window as any).__CRWO_APP_ROLE__ && (
-              <div className="flex items-center p-0.5 rounded-lg border border-slate-800 bg-slate-900/60 text-xs font-bold mr-1">
-                <button
-                  onClick={() => changeAppRole('user')}
-                  className={`px-3 py-1.5 rounded transition flex items-center gap-1.5 ${
-                    appRole === 'user' ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="CRWO Member Portal"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>CRWO User</span>
-                </button>
-                <button
-                  onClick={() => changeAppRole('admin')}
-                  className={`px-3 py-1.5 rounded transition flex items-center gap-1.5 ${
-                    appRole === 'admin' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                  title="CRWO Admin Terminal"
-                >
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>CRWO Admin</span>
-                </button>
-              </div>
-            )}
-            {/* Traffic Portal Button (Admin only) */}
-            {appRole === 'admin' && (
-              <button 
-                onClick={() => setTrafficPortalOpen(true)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                  trafficPortalOpen
-                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
-                    : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-                }`}
-              >
-                <Activity className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
-                <span>Traffic Portal</span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-850 text-emerald-400 border border-slate-800">1.4 Gbps</span>
-              </button>
-            )}
+            {/* Traffic Portal Button */}
+            <button 
+              onClick={() => setTrafficPortalOpen(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                trafficPortalOpen
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
+                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+              <span>Traffic Portal</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono bg-slate-850 text-emerald-400 border border-slate-800">1.4 Gbps</span>
+            </button>
 
-            {/* Search Button (Admin only) */}
-            {appRole === 'admin' && (
-              <button 
-                onClick={() => setSearchModalOpen(true)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                  searchModalOpen
-                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
-                    : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-                }`}
-              >
-                <Search className="w-3.5 h-3.5 text-teal-400" />
-                <span>Search</span>
-              </button>
-            )}
+            {/* Search Button */}
+            <button 
+              onClick={() => setSearchModalOpen(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                searchModalOpen
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
+                  : (darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              }`}
+            >
+              <Search className="w-3.5 h-3.5 text-teal-400" />
+              <span>Search</span>
+            </button>
 
             {/* Guide Button */}
             <button 
@@ -2891,36 +2631,32 @@ export default function App() {
             {/* Community Chat */}
             <button 
               onClick={() => {
-                fetchCommunityLinks();
-                setCommunityModalOpen(true);
+                window.open(DISCORD_INVITE_URL, "_blank");
+                addNotification("Opening CRWO Discord Server...");
               }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                communityModalOpen
-                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
-                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border text-xs font-semibold transition-all duration-200 ${
+                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Community Hub</span>
+              <span>Community Chat</span>
             </button>
 
-            {/* Hotline Call (Admin only) */}
-            {appRole === 'admin' && (
-              <button 
-                onClick={() => { 
-                  const randomId = Math.floor(1000 + Math.random() * 9000);
-                  setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
-                  setCallOpen(true); 
-                }}
-                className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 ${
-                  callOpen 
-                    ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
-                    : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
-                }`}
-              >
-                <PhoneCall className="w-4 h-4" />
-              </button>
-            )}
+            {/* Hotline Call */}
+            <button 
+              onClick={() => { 
+                const randomId = Math.floor(1000 + Math.random() * 9000);
+                setCurrentCallRoom(`CRWO-Hotline-${randomId}`);
+                setCallOpen(true); 
+              }}
+              className={`w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-200 ${
+                callOpen 
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400' : 'bg-blue-100 border-blue-500 text-blue-600') 
+                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
+              }`}
+            >
+              <PhoneCall className="w-4 h-4" />
+            </button>
 
             {/* Dark Mode Toggle */}
             <button 
@@ -2945,7 +2681,7 @@ export default function App() {
                     setUserName(null);
                     setUserId(null);
                     setUserLedger([]);
-                    setActiveTab(appRole === 'admin' ? 'admin' : 'idCard');
+                    setActiveTab('admin');
                     addNotification('Logged out successfully.');
                   }}
                   className="p-1.5 rounded-md border flex items-center justify-center transition border-slate-800 hover:bg-slate-850 hover:text-rose-455 text-slate-400"
@@ -2974,176 +2710,9 @@ export default function App() {
       </header>
 
       {/* DASHBOARD LAYOUT */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* If CRWO USER mode and not logged in: Render Centered User Login & Sign Up Screen */}
-        {appRole === 'user' && !userEmail ? (
-          <div className="max-w-md mx-auto py-4 sm:py-8 px-2 sm:px-0">
-            <div className={`p-6 sm:p-8 rounded-3xl border shadow-2xl backdrop-blur-xl relative overflow-hidden transition-all duration-300 ${
-              darkMode ? 'bg-slate-900/95 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-            }`}>
-              {/* Decorative radial glows */}
-              <div className="absolute -top-20 -right-20 w-48 h-48 bg-teal-500/15 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-indigo-500/15 rounded-full blur-3xl pointer-events-none"></div>
-
-              {/* Center Logo & Title */}
-              <div className="text-center mb-6 relative z-10">
-                <div className="w-20 h-20 mx-auto mb-3 relative flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full bg-teal-500/20 animate-ping opacity-30"></div>
-                  <CrwoLogo className="w-20 h-20 relative z-10" />
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/25 text-teal-400 text-[11px] font-bold tracking-widest uppercase mb-2 font-orbitron">
-                  <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>
-                  CRWO USER PORTAL
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black font-orbitron tracking-tight">
-                  Cryptocurrency Welfare
-                </h2>
-                <p className={`text-xs mt-1 max-w-xs mx-auto ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Member access for verified ID cards, welfare funds, cheque desk & community.
-                </p>
-              </div>
-
-              {/* Login / Sign Up Tabs */}
-              <div className="flex p-1 rounded-xl bg-slate-950/50 border border-slate-800/80 mb-5 relative z-10">
-                <button
-                  type="button"
-                  onClick={() => setLoginTab('login')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
-                    loginTab === 'login'
-                      ? (darkMode ? 'bg-teal-500 text-slate-950 shadow-md font-extrabold' : 'bg-blue-600 text-white shadow-md')
-                      : (darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
-                  }`}
-                >
-                  Member Login
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLoginTab('signup')}
-                  className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition ${
-                    loginTab === 'signup'
-                      ? (darkMode ? 'bg-teal-500 text-slate-950 shadow-md font-extrabold' : 'bg-blue-600 text-white shadow-md')
-                      : (darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')
-                  }`}
-                >
-                  New Sign Up
-                </button>
-              </div>
-
-              {/* Auth Form */}
-              <form onSubmit={(e) => { e.preventDefault(); handleUserAuthSubmit(); }} className="space-y-4 relative z-10">
-                {loginTab === 'signup' && (
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                      Full Legal Name
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="e.g. Ritesh Kumar"
-                        value={authName}
-                        onChange={(e) => setAuthName(e.target.value)}
-                        className={`w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border ${
-                          darkMode ? 'bg-slate-950/60 border-slate-800 text-white focus:border-teal-400 focus:outline-none' : 'bg-slate-50 border-slate-200 focus:border-blue-500 focus:outline-none'
-                        }`}
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    CRWO Registered Email
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="email"
-                      placeholder="member@crwo.org"
-                      value={authEmail}
-                      onChange={(e) => setAuthEmail(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border ${
-                        darkMode ? 'bg-slate-950/60 border-slate-800 text-white focus:border-teal-400 focus:outline-none' : 'bg-slate-50 border-slate-200 focus:border-blue-500 focus:outline-none'
-                      }`}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    Account Password
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={authPassword}
-                      onChange={(e) => setAuthPassword(e.target.value)}
-                      className={`w-full pl-9 pr-3 py-2.5 text-xs rounded-xl border ${
-                        darkMode ? 'bg-slate-950/60 border-slate-800 text-white focus:border-teal-400 focus:outline-none' : 'bg-slate-50 border-slate-200 focus:border-blue-500 focus:outline-none'
-                      }`}
-                      required
-                    />
-                  </div>
-                </div>
-
-                {loginTab === 'signup' && (
-                  <div className="flex items-start gap-2 pt-1">
-                    <input type="checkbox" id="centerUserTerms" defaultChecked className="mt-0.5 rounded text-teal-500" />
-                    <label htmlFor="centerUserTerms" className="text-[11px] text-slate-400 leading-tight">
-                      I agree to the CRWO welfare network terms and smart pool safety consensus.
-                    </label>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={authLoading}
-                  className={`w-full py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition ${
-                    darkMode ? 'bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 hover:from-teal-300 hover:to-emerald-300 shadow-lg shadow-teal-500/20 font-orbitron' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-md'
-                  } ${authLoading ? 'opacity-70 cursor-wait' : ''}`}
-                >
-                  {authLoading ? (
-                    <>
-                      <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-                      <span>Authenticating...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{loginTab === 'login' ? 'Access CRWO Account' : 'Complete Registration'}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
-
-              {/* Feature badges */}
-              <div className="mt-6 pt-5 border-t border-slate-800/60 grid grid-cols-3 gap-2 text-center relative z-10">
-                <div className="p-2 rounded-xl bg-slate-950/30 border border-slate-800/40">
-                  <CreditCard className="w-4 h-4 mx-auto text-teal-400 mb-1" />
-                  <p className="text-[9px] font-bold text-slate-300 uppercase">CRWO ID</p>
-                  <p className="text-[8px] text-slate-500">Official Card</p>
-                </div>
-                <div className="p-2 rounded-xl bg-slate-950/30 border border-slate-800/40">
-                  <FileText className="w-4 h-4 mx-auto text-emerald-400 mb-1" />
-                  <p className="text-[9px] font-bold text-slate-300 uppercase">Cheque Desk</p>
-                  <p className="text-[8px] text-slate-500">Live Status</p>
-                </div>
-                <div className="p-2 rounded-xl bg-slate-950/30 border border-slate-800/40">
-                  <MessageSquare className="w-4 h-4 mx-auto text-indigo-400 mb-1" />
-                  <p className="text-[9px] font-bold text-slate-300 uppercase">Community</p>
-                  <p className="text-[8px] text-slate-500">Official Hub</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* MOBILE NAVIGATION BAR (horizontal scrollable) */}
+        {/* MOBILE NAVIGATION BAR (horizontal scrollable) */}
         <div className="lg:hidden w-full overflow-x-auto flex gap-2 pb-3 mb-5 shrink-0 select-none">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -8409,7 +7978,7 @@ export default function App() {
                         onClick={() => setTrafficTab('video_log')}
                         className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
                           trafficTab === 'video_log'
-                            ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)] font-bold'
+                            ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)] font-bold'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                         }`}
                       >
@@ -9725,115 +9294,10 @@ export default function App() {
           </main>
 
         </div>
-          </>
-        )}
       </div>
 
 
 
-
-      {/* COMMUNITY GROUPS & PLATFORMS MODAL */}
-      {communityModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
-          <div className={`w-full max-w-lg p-6 rounded-2xl border ${darkMode ? 'bg-slate-900 border-teal-500/30 text-white' : 'bg-white border-slate-200 text-slate-800'} shadow-2xl relative max-h-[85vh] flex flex-col`}>
-            <button
-              onClick={() => setCommunityModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 font-bold"
-            >
-              ✕
-            </button>
-
-            <div className="flex items-center gap-3 border-b pb-4 mb-4 border-slate-800/60 shrink-0">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold font-orbitron uppercase tracking-wider text-teal-400">
-                  CRWO Community Hub
-                </h3>
-                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Join official platforms & connect with member groups
-                </p>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
-              {/* DEFAULT OFFICIAL DISCORD */}
-              <div className="p-4 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 to-slate-900/60 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                        DISCORD (PRIMARY)
-                      </span>
-                    </div>
-                    <p className="text-xs font-bold text-white mt-1">Official CRWO Discord Server</p>
-                    <p className="text-[10px] text-slate-400">Live Voice, Community Channels & Support</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    window.open(DISCORD_INVITE_URL, "_blank");
-                    addNotification("Opening CRWO Discord Server...");
-                  }}
-                  className="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shrink-0"
-                >
-                  Join Server
-                </button>
-              </div>
-
-              {/* DYNAMIC CONFIGURABLE COMMUNITY LINKS FROM DATABASE */}
-              {isCommunityLoading ? (
-                <div className="py-6 text-center text-xs text-slate-400">
-                  Loading community channels...
-                </div>
-              ) : (
-                communityLinks.map((item: any) => (
-                  <div 
-                    key={item.id} 
-                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
-                        {item.logo ? (
-                          <img src={item.logo} alt={item.platform} className="w-6 h-6 object-contain rounded" />
-                        ) : (
-                          <Users className="w-5 h-5 text-teal-400" />
-                        )}
-                      </div>
-                      <div>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30">
-                          {item.platform}
-                        </span>
-                        <p className="text-xs font-bold text-slate-200 mt-1">{item.title}</p>
-                        <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{item.link}</p>
-                      </div>
-                    </div>
-
-                    <a
-                      href={item.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 transition shrink-0"
-                    >
-                      Connect
-                    </a>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="pt-4 mt-3 border-t border-slate-800/40 text-center">
-              <p className="text-[10px] text-slate-500">
-                Admins can configure and add more platforms directly from the Traffic Portal.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* CALL OVERLAY (MODAL INTERACTIVE POPUP) */}
       {callOpen && (
