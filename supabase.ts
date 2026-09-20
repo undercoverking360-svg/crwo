@@ -576,10 +576,33 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       return { success: true, message: "Successfully unblocked target entry" };
     }
 
+    else if (action === "getCommunityLinks") {
+      const { data: records, error } = await supabase
+        .from('traffic')
+        .select('*')
+        .eq('main_party', '__COMMUNITY__')
+        .order('id', { ascending: true });
+
+      if (error) throw error;
+      return {
+        success: true,
+        data: (records || []).map((r: any, idx: number) => ({
+          id: r.id,
+          slNo: r.sl_no || (idx + 1),
+          platform: safeStr(r.sub_party),
+          title: safeStr(r.holder_name),
+          link: safeStr(r.ac_name),
+          logo: safeStr(r.remarks),
+          createdAt: safeStr(r.created_at)
+        }))
+      };
+    }
+
     else if (action === "getTraffic") {
       const { data: traffic, error } = await supabase
         .from('traffic')
         .select('*')
+        .neq('main_party', '__COMMUNITY__')
         .order('sl_no', { ascending: true });
 
       if (error) throw error;
@@ -1272,6 +1295,47 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
         .eq('sl_no', data.slNo);
       if (upErr) throw upErr;
       writeResponse = { success: true, message: "Traffic record margins updated successfully!" };
+    }
+
+    else if (action === "addCommunityLink") {
+      const platform = safeStr(data.platform);
+      const title = safeStr(data.title);
+      const link = safeStr(data.link);
+      const logo = safeStr(data.logo);
+
+      const { data: lastRec } = await supabase
+        .from('traffic')
+        .select('sl_no')
+        .eq('main_party', '__COMMUNITY__')
+        .order('sl_no', { ascending: false })
+        .limit(1);
+
+      const nextSlNo = (lastRec && lastRec[0] && lastRec[0].sl_no ? Number(lastRec[0].sl_no) : 0) + 1;
+
+      const { error: insErr } = await supabase
+        .from('traffic')
+        .insert([{
+          sl_no: nextSlNo,
+          main_party: '__COMMUNITY__',
+          sub_party: platform,
+          holder_name: title,
+          ac_name: link,
+          remarks: logo
+        }]);
+
+      if (insErr) throw insErr;
+      writeResponse = { success: true, message: `Community link for ${platform} created successfully!` };
+    }
+
+    else if (action === "deleteCommunityLink") {
+      const id = Number(data.id);
+      const { error: delErr } = await supabase
+        .from('traffic')
+        .delete()
+        .eq('id', id);
+
+      if (delErr) throw delErr;
+      writeResponse = { success: true, message: "Community link deleted." };
     }
 
     // Run Google Apps Script background write for sync compatibility
