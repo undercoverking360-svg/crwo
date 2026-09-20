@@ -683,6 +683,37 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       writeResponse = { success: true, message: "Bank account #" + slNo + " status updated to " + accountStatus };
     }
 
+    else if (action === "updateBankDetails") {
+      const email = safeLower(data.email);
+      const slNo = parseInt(data.slNo);
+      const updateData: any = {};
+      if (data.nameOfHolder !== undefined) updateData.name_of_holder = data.nameOfHolder;
+      if (data.bankName !== undefined) updateData.bank_name = data.bankName;
+      if (data.acNo !== undefined) updateData.ac_no = data.acNo;
+      if (data.ifscCode !== undefined) updateData.ifsc_code = data.ifscCode;
+      if (data.atmCardNo !== undefined) updateData.atm_card_no = data.atmCardNo;
+      if (data.expiry !== undefined) updateData.expiry = data.expiry;
+      if (data.cvv !== undefined) updateData.cvv = data.cvv;
+      if (data.atmPin !== undefined) updateData.atm_pin = data.atmPin;
+      if (data.netbankingUserId !== undefined) updateData.netbanking_user_id = data.netbankingUserId;
+      if (data.netbankingLoginPass !== undefined) updateData.netbanking_login_pass = data.netbankingLoginPass;
+      if (data.netbankingTransactionPass !== undefined) updateData.netbanking_transaction_pass = data.netbankingTransactionPass;
+      if (data.mobileBankingLoginPin !== undefined) updateData.mobile_banking_login_pin = data.mobileBankingLoginPin;
+      if (data.mobileBankingTPin !== undefined) updateData.mobile_banking_tpin = data.mobileBankingTPin;
+      if (data.upiPin !== undefined) updateData.upi_pin = data.upiPin;
+      if (data.remarks !== undefined) updateData.remarks = data.remarks;
+      if (data.accountStatus !== undefined) updateData.account_status = data.accountStatus;
+
+      const { error: upErr } = await supabase
+        .from('bank_details')
+        .update(updateData)
+        .eq('email', email)
+        .eq('sl_no', slNo);
+
+      if (upErr) throw upErr;
+      writeResponse = { success: true, message: "Bank account #" + slNo + " updated successfully for " + email };
+    }
+
     else if (action === "addCheque") {
       const email = safeLower(data.email);
       const date = data.date || new Date().toLocaleDateString();
