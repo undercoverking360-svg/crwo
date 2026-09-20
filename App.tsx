@@ -2631,24 +2631,26 @@ export default function App() {
             </div>
 
             {/* Portal Switcher */}
-            <div className="flex items-center p-0.5 rounded-lg border border-slate-800 bg-slate-900/60 text-[9px] font-bold">
-              <button
-                onClick={() => changeAppRole('user')}
-                className={`px-2 py-0.5 rounded transition ${
-                  appRole === 'user' ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                USER
-              </button>
-              <button
-                onClick={() => changeAppRole('admin')}
-                className={`px-2 py-0.5 rounded transition ${
-                  appRole === 'admin' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                ADMIN
-              </button>
-            </div>
+            {!(window as any).__CRWO_APP_ROLE__ && (
+              <div className="flex items-center p-0.5 rounded-lg border border-slate-800 bg-slate-900/60 text-[9px] font-bold">
+                <button
+                  onClick={() => changeAppRole('user')}
+                  className={`px-2 py-0.5 rounded transition ${
+                    appRole === 'user' ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  USER
+                </button>
+                <button
+                  onClick={() => changeAppRole('admin')}
+                  className={`px-2 py-0.5 rounded transition ${
+                    appRole === 'admin' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  ADMIN
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Row 2: Utilities (4 Columns Grid) */}
@@ -2811,28 +2813,30 @@ export default function App() {
           {/* Desktop Actions & Utilities */}
           <div className="flex items-center gap-2.5">
             {/* Mode Switcher on Web (CRWO User vs CRWO Admin) */}
-            <div className="flex items-center p-0.5 rounded-lg border border-slate-800 bg-slate-900/60 text-xs font-bold mr-1">
-              <button
-                onClick={() => changeAppRole('user')}
-                className={`px-3 py-1.5 rounded transition flex items-center gap-1.5 ${
-                  appRole === 'user' ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-                title="CRWO Member Portal"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>CRWO User</span>
-              </button>
-              <button
-                onClick={() => changeAppRole('admin')}
-                className={`px-3 py-1.5 rounded transition flex items-center gap-1.5 ${
-                  appRole === 'admin' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-                title="CRWO Admin Terminal"
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>CRWO Admin</span>
-              </button>
-            </div>
+            {!(window as any).__CRWO_APP_ROLE__ && (
+              <div className="flex items-center p-0.5 rounded-lg border border-slate-800 bg-slate-900/60 text-xs font-bold mr-1">
+                <button
+                  onClick={() => changeAppRole('user')}
+                  className={`px-3 py-1.5 rounded transition flex items-center gap-1.5 ${
+                    appRole === 'user' ? 'bg-teal-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="CRWO Member Portal"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>CRWO User</span>
+                </button>
+                <button
+                  onClick={() => changeAppRole('admin')}
+                  className={`px-3 py-1.5 rounded transition flex items-center gap-1.5 ${
+                    appRole === 'admin' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="CRWO Admin Terminal"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>CRWO Admin</span>
+                </button>
+              </div>
+            )}
             {/* Traffic Portal Button */}
             <button 
               onClick={() => setTrafficPortalOpen(true)}

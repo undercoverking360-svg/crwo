@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@supabase/supabase-js": "^2.112.1",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.3.3",
     "firebase": "^12.16.0",
