@@ -477,6 +477,45 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       }
     }
 
+    else if (action === "getTraffic") {
+      const { data: traffic, error } = await supabase
+        .from('traffic_records')
+        .select('*')
+        .order('sl_no', { ascending: true });
+
+      if (error) throw error;
+      return {
+        success: true,
+        data: (traffic || []).map(t => ({
+          slNo: t.sl_no,
+          date: safeStr(t.date),
+          mainParty: safeStr(t.main_party),
+          subParty: safeStr(t.sub_party),
+          lossFund: Number(t.loss_fund) || 0,
+          lossAddOn: Number(t.loss_add_on) || 0,
+          currentLossFund: Number(t.current_loss_fund) || 0,
+          fundToManaged: Number(t.fund_to_managed) || 0,
+          holderName: safeStr(t.holder_name),
+          acName: safeStr(t.ac_name),
+          totalTurnover: Number(t.total_turnover) || 0,
+          remainingTurnover: Number(t.remaining_turnover) || 0,
+          margin74: Number(t.margin74) || 0,
+          margin5: Number(t.margin5) || 0,
+          margin25: Number(t.margin25) || 0,
+          margin01: Number(t.margin01) || 0,
+          margin15: Number(t.margin15) || 0,
+          margin70: Number(t.margin70) || 0,
+          status74: safeStr(t.status74) || 'UNPAID',
+          status5: safeStr(t.status5) || 'UNPAID',
+          status25: safeStr(t.status25) || 'UNPAID',
+          status01: safeStr(t.status01) || 'UNPAID',
+          status15: safeStr(t.status15) || 'UNPAID',
+          status70: safeStr(t.status70) || 'UNPAID',
+          remarks: safeStr(t.remarks)
+        }))
+      };
+    }
+
     // ----------------------------------------------------
     // WRITE ACTIONS (Dual-write to Supabase AND Apps Script)
     // ----------------------------------------------------
@@ -1066,6 +1105,43 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
 
       if (upErr) throw upErr;
       writeResponse = { success: true, message: "Batch " + batchNo + " receipt confirmed by user!" };
+    }
+
+    else if (action === "addTraffic") {
+      const { error: insErr } = await supabase
+        .from('traffic_records')
+        .insert([{
+          date: safeStr(data.date),
+          main_party: safeStr(data.mainParty),
+          sub_party: safeStr(data.subParty),
+          loss_fund: Number(data.lossFund) || 0,
+          loss_add_on: Number(data.lossAddOn) || 0,
+          current_loss_fund: Number(data.currentLossFund) || 0,
+          fund_to_managed: Number(data.fundToManaged) || 0,
+          holder_name: safeStr(data.holderName),
+          ac_name: safeStr(data.acName),
+          total_turnover: Number(data.totalTurnover) || 0,
+          remarks: safeStr(data.remarks)
+        }]);
+      if (insErr) throw insErr;
+      writeResponse = { success: true, message: "Traffic transaction logged successfully!" };
+    }
+
+    else if (action === "updateTrafficPayment") {
+      const { error: upErr } = await supabase
+        .from('traffic_records')
+        .update({
+          status74: data.status74,
+          status5: data.status5,
+          status25: data.status25,
+          status01: data.status01,
+          status15: data.status15,
+          status70: data.status70,
+          remarks: data.remarks
+        })
+        .eq('sl_no', data.slNo);
+      if (upErr) throw upErr;
+      writeResponse = { success: true, message: "Traffic record margins updated successfully!" };
     }
 
     // Run Google Apps Script background write for sync compatibility
