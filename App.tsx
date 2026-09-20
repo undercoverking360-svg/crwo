@@ -1055,26 +1055,11 @@ export default function App() {
         const syncedNum = parseFloat(rawLoss) || 0;
         setTrLossFund(String(syncedNum));
 
-        // Auto pre-fill secondary details if currently empty
-        if (!currentSub && bestMatch.subParty) {
-          setTrSubParty(bestMatch.subParty);
-        }
-        if (!trHolderName && bestMatch.holderName) {
-          setTrHolderName(bestMatch.holderName);
-        }
-        if (!trAcName && bestMatch.acName) {
-          setTrAcName(bestMatch.acName);
-        }
-
         setPartySyncInfo({
           matched: true,
           partyName: bestMatch.mainParty,
-          subPartyName: bestMatch.subParty,
           slNo: bestMatch.slNo,
-          syncedLossFund: syncedNum,
-          previousHolder: bestMatch.holderName,
-          previousAc: bestMatch.acName,
-          previousDate: bestMatch.date
+          syncedLossFund: syncedNum
         });
         return;
       }
@@ -7444,9 +7429,7 @@ export default function App() {
                                   <div>
                                     {partySyncInfo.matched ? (
                                       <>
-                                        <span className="font-bold text-slate-100">Party Match:</span> SL #{partySyncInfo.slNo} ({partySyncInfo.partyName}
-                                        {partySyncInfo.subPartyName ? ` • ${partySyncInfo.subPartyName}` : ''})
-                                        {partySyncInfo.previousHolder && <span className="text-[9px] text-slate-400 block font-sans">Holder: {partySyncInfo.previousHolder}</span>}
+                                        <span className="font-bold text-slate-100">Party Match:</span> SL #{partySyncInfo.slNo} ({partySyncInfo.partyName}) • Latest Loss Fund
                                       </>
                                     ) : (
                                       <>
