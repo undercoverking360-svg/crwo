@@ -477,9 +477,108 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       }
     }
 
+    else if (action === "checkBlacklist") {
+      const email = safeLower(data.email);
+      const deviceUuid = safeStr(data.deviceUuid);
+      const ipAddress = safeStr(data.ipAddress);
+
+      const { data: records, error } = await supabase
+        .from('crwo_blacklist')
+        .select('*');
+
+      if (error) throw error;
+
+      const matched = (records || []).find((r: any) => {
+        const val = safeStr(r.value).trim().toLowerCase();
+        if (r.type === 'email' && email && val === safeStr(email).trim().toLowerCase()) return true;
+        if (r.type === 'ip' && ipAddress && val === safeStr(ipAddress).trim().toLowerCase()) return true;
+        if (r.type === 'device' && deviceUuid && val === safeStr(deviceUuid).trim().toLowerCase()) return true;
+        return false;
+      });
+
+      if (matched) {
+        return { success: true, isBlocked: true, reason: matched.reason || "Unusual activity detected" };
+      }
+      return { success: true, isBlocked: false };
+    }
+
+    else if (action === "getBlacklist") {
+      const { data: records, error } = await supabase
+        .from('crwo_blacklist')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: records || [] };
+    }
+
+    else if (action === "getUserDevices") {
+      const { data: devices, error } = await supabase
+        .from('crwo_user_devices')
+        .select('*')
+        .order('last_seen', { ascending: false });
+
+      if (error) throw error;
+      return { success: true, data: devices || [] };
+    }
+
+    else if (action === "logUserDevice" || action === "registerDevice") {
+      const email = safeLower(data.email);
+      const deviceUuid = safeStr(data.deviceUuid);
+      const ipAddress = safeStr(data.ipAddress);
+      const userAgent = safeStr(data.userAgent);
+
+      if (!email || !deviceUuid) return { success: false, message: "Missing params" };
+
+      const { error } = await supabase
+        .from('crwo_user_devices')
+        .upsert({
+          email,
+          device_uuid: deviceUuid,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+          last_seen: new Date().toISOString()
+        }, { onConflict: 'email,device_uuid' });
+
+      if (error) throw error;
+      return { success: true, message: "Logged device info" };
+    }
+
+    else if (action === "addToBlacklist" || action === "addBlacklist") {
+      const type = safeStr(data.type);
+      const value = safeStr(data.value).toLowerCase();
+      const reason = safeStr(data.reason || "Unusual activity / Multi-account link");
+
+      if (!type || !value) return { success: false, message: "Type and value required" };
+
+      const { error } = await supabase
+        .from('crwo_blacklist')
+        .upsert({
+          type,
+          value,
+          reason,
+          created_at: new Date().toISOString()
+        }, { onConflict: 'value' });
+
+      if (error) throw error;
+      return { success: true, message: `Successfully blacklisted ${type}: ${value}` };
+    }
+
+    else if (action === "removeFromBlacklist" || action === "removeBlacklist") {
+      const id = Number(data.id);
+
+      const { error } = await supabase
+        .from('crwo_blacklist')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true, message: "Successfully unblocked target entry" };
+    }
+
     else if (action === "getTraffic") {
       const { data: traffic, error } = await supabase
-        .from('traffic_records')
+        .from('traffic')
         .select('*')
         .order('sl_no', { ascending: true });
 
@@ -1140,7 +1239,7 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
 
     else if (action === "addTraffic") {
       const { error: insErr } = await supabase
-        .from('traffic_records')
+        .from('traffic')
         .insert([{
           date: safeStr(data.date),
           main_party: safeStr(data.mainParty),
@@ -1160,7 +1259,7 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
 
     else if (action === "updateTrafficPayment") {
       const { error: upErr } = await supabase
-        .from('traffic_records')
+        .from('traffic')
         .update({
           status74: data.status74,
           status5: data.status5,

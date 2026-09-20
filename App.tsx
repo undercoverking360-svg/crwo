@@ -439,13 +439,45 @@ export default function App() {
     }
   };
 
+
+  const fetchSecurityData = async () => {
+    setSecurityLoading(true);
+    try {
+      const [blacklistRes, devicesRes] = await Promise.all([
+        callApi({ action: 'getBlacklist' }),
+        callApi({ action: 'getUserDevices' })
+      ]);
+      if (blacklistRes && blacklistRes.success) setSecurityBlacklist(blacklistRes.data || []);
+      if (devicesRes && devicesRes.success) setSecurityDevices(devicesRes.data || []);
+    } catch (err) {
+      console.error('Error fetching security data:', err);
+    } finally {
+      setSecurityLoading(false);
+    }
+  };
+
   const fetchRegisteredUsers = async () => {
     try {
-      const res = await callApi({ action: 'getUserList' });
+      const [res, blacklistRes] = await Promise.all([
+        callApi({ action: 'getUserList' }),
+        callApi({ action: 'getBlacklist' })
+      ]);
+
       if (res.success && res.data) {
-        setRegisteredUsers(res.data);
-        if (res.data.length > 0) {
-          setSelectedEntryUser(res.data[0]);
+        const blockedEmails = new Set<string>();
+        if (blacklistRes && blacklistRes.success && Array.isArray(blacklistRes.data)) {
+          blacklistRes.data
+            .filter((r: any) => r && r.type === 'email' && r.value)
+            .forEach((r: any) => blockedEmails.add(r.value.toLowerCase()));
+        }
+
+        const activeUsers = res.data.filter((email: string) => email && !blockedEmails.has(email.toLowerCase()));
+
+        setRegisteredUsers(activeUsers);
+        if (activeUsers.length > 0) {
+          setSelectedEntryUser(activeUsers[0]);
+        } else {
+          setSelectedEntryUser('');
         }
       }
     } catch (err) {
@@ -573,6 +605,19 @@ export default function App() {
   const [popStatus70, setPopStatus70] = useState<'PAID' | 'UNPAID'>('UNPAID');
   const [popRemarks, setPopRemarks] = useState('');
   const [popSubmitLoading, setPopSubmitLoading] = useState(false);
+
+  // Blacklist & Device Fingerprint States (Admin Security)
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
+  const [clientIpAddress, setClientIpAddress] = useState('');
+  const [deviceUuid, setDeviceUuid] = useState('');
+  const [securityBlacklist, setSecurityBlacklist] = useState<any[]>([]);
+  const [securityDevices, setSecurityDevices] = useState<any[]>([]);
+  const [securityLoading, setSecurityLoading] = useState(false);
+  const [blacklistType, setBlacklistType] = useState<'email' | 'ip' | 'device'>('email');
+  const [blacklistValue, setBlacklistValue] = useState('');
+  const [blacklistReason, setBlacklistReason] = useState('');
+  const [securitySubmitLoading, setSecuritySubmitLoading] = useState(false);
 
   // Active traffic view sub-tab
   const [trafficTab, setTrafficTab] = useState<'database' | 'loss_fund' | 'turnover' | 'holders' | 'manager_comm' | 'head_comm' | 'logs' | 'admin_console' | 'video_log'>('logs');
@@ -1844,9 +1889,100 @@ export default function App() {
         }
       }
     } catch (e) {}
+    const initSecurity = async () => {
+      // 1. Get/Set Device UUID
+      let devId = localStorage.getItem('crwo_device_id');
+      if (!devId) {
+        devId = 'device-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('crwo_device_id', devId);
+      }
+      setDeviceUuid(devId);
+
+      // 2. Fetch Client IP (with fallback services)
+      let ip = '';
+      try {
+        const fetchWithTimeout = (url: string, ms = 3000) => {
+          return new Promise<Response>((resolve, reject) => {
+            const timer = setTimeout(() => reject(new Error('Timeout')), ms);
+            fetch(url)
+              .then(res => { clearTimeout(timer); resolve(res); })
+              .catch(err => { clearTimeout(timer); reject(err); });
+          });
+        };
+
+        try {
+          const res = await fetchWithTimeout('https://api.ipify.org?format=json');
+          const data = await res.json();
+          ip = data.ip || '';
+        } catch (e1) {
+          try {
+            const res = await fetchWithTimeout('https://api.seeip.org/json');
+            const data = await res.json();
+            ip = data.ip || '';
+          } catch (e2) {
+            try {
+              const res = await fetchWithTimeout('https://icanhazip.com');
+              const text = await res.text();
+              ip = text.trim();
+            } catch (e3) {}
+          }
+        }
+
+        if (ip) setClientIpAddress(ip);
+      } catch (err) {
+        console.warn("Could not fetch client IP:", err);
+      }
+
+      // 3. Check Blacklist
+      try {
+        const checkRes = await callApi({
+          action: 'checkBlacklist',
+          email: localStorage.getItem('crwo_user_email') || userEmail || '',
+          deviceUuid: devId,
+          ipAddress: ip
+        });
+        if (checkRes && checkRes.isBlocked) {
+          setIsBlocked(true);
+          setBlockReason(checkRes.reason);
+        }
+      } catch (err) {
+        console.error("Blacklist check failed:", err);
+      }
+    };
+
+    initSecurity();
     fetchSearchData();
     fetchGuideData();
   }, []);
+
+  // Automatically log device info whenever a user is authenticated (Login / Signup)
+  useEffect(() => {
+    if (userEmail && deviceUuid) {
+      callApi({
+        action: 'logUserDevice',
+        email: userEmail,
+        deviceUuid: deviceUuid,
+        ipAddress: clientIpAddress || 'No IP Detected',
+        userAgent: navigator.userAgent
+      }).catch(err => {
+        console.error("Security device log error:", err);
+      });
+    }
+  }, [userEmail, deviceUuid, clientIpAddress]);
+
+  // Autofill block target value based on selected member and block type in Security tab
+  useEffect(() => {
+    if (adminFormTab === 'security' && selectedEntryUser) {
+      const matchedDevice = securityDevices.find(d => d.email && d.email.toLowerCase() === selectedEntryUser.toLowerCase());
+      if (blacklistType === 'email') {
+        setBlacklistValue(selectedEntryUser);
+      } else if (blacklistType === 'ip') {
+        setBlacklistValue(matchedDevice?.ip_address || '');
+      } else if (blacklistType === 'device') {
+        setBlacklistValue(matchedDevice?.device_uuid || '');
+      }
+    }
+  }, [selectedEntryUser, blacklistType, adminFormTab, securityDevices]);
 
   useEffect(() => {
     if (searchModalOpen) {
@@ -2235,7 +2371,35 @@ export default function App() {
   return (
     <div className={`min-h-screen font-sans ${darkMode ? 'crypto-bg-dark text-slate-100' : 'crypto-bg-light text-slate-800'} transition-colors duration-300 relative overflow-x-hidden`}>
       <WaveBackground darkMode={darkMode} />
-      
+
+      {/* BLOCKED DEVICE SCREEN */}
+      {isBlocked && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/98 backdrop-blur-xl">
+          <div className="max-w-md w-full mx-4 p-8 rounded-2xl border-2 border-rose-500/60 bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-950 shadow-[0_0_60px_rgba(244,63,94,0.3)] text-center space-y-5">
+            <div className="w-16 h-16 rounded-full bg-rose-500/20 border-2 border-rose-500/50 flex items-center justify-center mx-auto animate-pulse">
+              <ShieldAlert className="w-8 h-8 text-rose-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black font-orbitron text-rose-400 uppercase tracking-wider">Access Permanently Revoked</h2>
+              <p className="text-xs text-slate-400 mt-2 leading-relaxed">
+                Your device, IP address, or account has been permanently blacklisted by the CRWO Administration.
+              </p>
+            </div>
+            <div className={`p-4 rounded-xl border text-left space-y-2 bg-slate-900/60 border-slate-800`}>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Reason for Block</p>
+              <p className="text-xs text-slate-300 italic">{blockReason || "Unusual activity, multiple profiles, or ledger tampering detected on this device."}</p>
+              <p className="text-[9px] text-slate-500 mt-2">
+                IP: {clientIpAddress || "Detecting..."} <br />
+                Device Fingerprint: {deviceUuid ? deviceUuid.substring(0, 16) + '...' : 'Detecting...'}
+              </p>
+            </div>
+            <p className="text-[10px] text-slate-500">
+              Contact CRWO administration to appeal this decision.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
         {notifications.map((note, index) => (
@@ -2872,6 +3036,14 @@ export default function App() {
                         >
                           Courier
                         </button>
+                        <button
+                          onClick={() => { setAdminFormTab('security' as any); fetchSecurityData(); }}
+                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
+                            adminFormTab === 'security' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-rose-400 hover:text-rose-300'
+                          }`}
+                        >
+                          🛡 Security
+                        </button>
                       </div>
                     </div>
 
@@ -2881,7 +3053,7 @@ export default function App() {
                         <div className="flex items-center justify-between pb-2 border-b border-slate-800/40">
                           <h3 className="text-xs font-bold uppercase tracking-wider font-orbitron text-teal-400 flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-teal-400"></span>
-                            {adminFormTab === 'entry' ? 'Add Ledger Entry' : adminFormTab === 'bank' ? 'Bank Profile Entry' : adminFormTab === 'cheque' ? 'Issue Digital Cheque' : adminFormTab === 'advance' ? 'Manage Advance Request' : adminFormTab === 'complain' ? 'Manage Support Ticket' : adminFormTab === 'referral' ? 'Manage Referral Request' : adminFormTab === 'courier' ? 'Manage Courier Batches' : 'Verify KYC Records'}
+                            {adminFormTab === 'entry' ? 'Add Ledger Entry' : adminFormTab === 'bank' ? 'Bank Profile Entry' : adminFormTab === 'cheque' ? 'Issue Digital Cheque' : adminFormTab === 'advance' ? 'Manage Advance Request' : adminFormTab === 'complain' ? 'Manage Support Ticket' : adminFormTab === 'referral' ? 'Manage Referral Request' : adminFormTab === 'courier' ? 'Manage Courier Batches' : adminFormTab === 'security' ? 'Security & Blacklist Control' : 'Verify KYC Records'}
                           </h3>
                         </div>
 
@@ -4047,6 +4219,98 @@ export default function App() {
                               {adminCourierSubmitLoading ? 'Saving Batch Status...' : 'Submit Courier Verdict'}
                             </button>
                           </div>
+                        ) : adminFormTab === 'security' ? (
+                          <div className="space-y-4 text-left">
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-400">Blacklist Security Control</p>
+                            
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Target Block Type *</label>
+                                <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-900 rounded-lg border border-slate-800">
+                                  <button
+                                    type="button"
+                                    onClick={() => setBlacklistType('email')}
+                                    className={`py-1.5 text-[10px] font-bold uppercase rounded transition cursor-pointer ${blacklistType === 'email' ? 'bg-teal-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+                                  >
+                                    Email
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setBlacklistType('ip')}
+                                    className={`py-1.5 text-[10px] font-bold uppercase rounded transition cursor-pointer ${blacklistType === 'ip' ? 'bg-teal-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+                                  >
+                                    IP Addr
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setBlacklistType('device')}
+                                    className={`py-1.5 text-[10px] font-bold uppercase rounded transition cursor-pointer ${blacklistType === 'device' ? 'bg-teal-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
+                                  >
+                                    Device
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                  Block Target Value ({blacklistType.toUpperCase()}) *
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder={blacklistType === 'email' ? 'user@gmail.com' : blacklistType === 'ip' ? 'e.g. 157.49.16.243' : 'device-uuid'}
+                                  value={blacklistValue}
+                                  onChange={(e) => setBlacklistValue(e.target.value)}
+                                  className={`w-full p-2 text-xs rounded-lg border focus:outline-none ${darkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-teal-400' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-1">Reason for Ban *</label>
+                                <textarea
+                                  placeholder="e.g. Creating multiple ledger accounts / unusual activities."
+                                  value={blacklistReason}
+                                  onChange={(e) => setBlacklistReason(e.target.value)}
+                                  rows={3}
+                                  className={`w-full p-2 text-xs rounded-lg border focus:outline-none ${darkMode ? 'bg-slate-900 border-slate-700 text-white focus:border-teal-400' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-blue-600'}`}
+                                />
+                              </div>
+
+                              <button
+                                onClick={async () => {
+                                  if (!blacklistValue || !blacklistReason) {
+                                    addNotification("Please fill in all fields.");
+                                    return;
+                                  }
+                                  setSecuritySubmitLoading(true);
+                                  try {
+                                    const res = await callApi({
+                                      action: 'addToBlacklist',
+                                      type: blacklistType,
+                                      value: blacklistValue.trim(),
+                                      reason: blacklistReason.trim()
+                                    });
+                                    if (res.success) {
+                                      addNotification(`Successfully blacklisted target!`);
+                                      setBlacklistValue('');
+                                      setBlacklistReason('');
+                                      fetchSecurityData();
+                                      fetchRegisteredUsers();
+                                    } else {
+                                      addNotification(res.message || "Failed to block.");
+                                    }
+                                  } catch (e) {
+                                    console.error("Block error", e);
+                                  } finally {
+                                    setSecuritySubmitLoading(false);
+                                  }
+                                }}
+                                disabled={securitySubmitLoading}
+                                className={`w-full py-2.5 text-xs font-bold rounded-lg text-center transition ${securitySubmitLoading ? 'opacity-60 cursor-not-allowed bg-slate-800 text-slate-400' : 'bg-rose-600 text-white hover:bg-rose-700'}`}
+                              >
+                                {securitySubmitLoading ? 'Locking Access...' : 'Commit Blacklist / Ban'}
+                              </button>
+                            </div>
+                          </div>
                         ) : null}
                       </div>
                     </div>
@@ -4055,7 +4319,7 @@ export default function App() {
                     <div className="lg:col-span-3 flex flex-col space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron">
-                          {adminFormTab === 'entry' ? 'Ledger Sheets' : adminFormTab === 'bank' ? 'Registered Bank Accounts' : adminFormTab === 'cheque' ? 'Issued Digital Cheques' : adminFormTab === 'advance' ? 'Advance Requests Log' : adminFormTab === 'complain' ? 'Complaint Tickets Log' : 'Referral Requests Log'}
+                          {adminFormTab === 'entry' ? 'Ledger Sheets' : adminFormTab === 'bank' ? 'Registered Bank Accounts' : adminFormTab === 'cheque' ? 'Issued Digital Cheques' : adminFormTab === 'advance' ? 'Advance Requests Log' : adminFormTab === 'complain' ? 'Complaint Tickets Log' : adminFormTab === 'security' ? 'Security Threat Registry & Logs' : adminFormTab === 'courier' ? 'Courier Dispatch Batches' : adminFormTab === 'kyc' ? 'Member KYC Documents' : 'Referral Requests Log'}
                         </h3>
                         <span className={`text-[10px] px-2 py-0.5 rounded font-mono ${darkMode ? 'bg-slate-950 text-slate-400' : 'bg-slate-100 text-slate-600'}`}>
                           Live Sync
@@ -4627,6 +4891,190 @@ export default function App() {
                                     ))}
                                   </div>
                                 )}
+                              </div>
+                            </div>
+                          ) : adminFormTab === 'security' ? (
+                            <div className="space-y-6 text-left">
+                              {/* Device Matcher & Multi-Account Finder */}
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-teal-400 mb-3 flex items-center gap-2">
+                                  <span>Device Matching Terminal (Multi-Account Flag)</span>
+                                </h4>
+                                
+                                <div className="space-y-3">
+                                  {securityDevices.length === 0 ? (
+                                    <div className={`p-4 rounded-xl border text-xs text-center italic ${darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                      No device registration records found.
+                                    </div>
+                                  ) : (
+                                    (() => {
+                                      // Group emails by device_uuid
+                                      const uuidGroups: { [key: string]: { emails: Set<string>, ips: Set<string>, details: any[] } } = {};
+                                      securityDevices.forEach(d => {
+                                        if (!d.device_uuid) return;
+                                        if (!uuidGroups[d.device_uuid]) {
+                                          uuidGroups[d.device_uuid] = { emails: new Set(), ips: new Set(), details: [] };
+                                        }
+                                        uuidGroups[d.device_uuid].emails.add(d.email);
+                                        if (d.ip_address) uuidGroups[d.device_uuid].ips.add(d.ip_address);
+                                        uuidGroups[d.device_uuid].details.push(d);
+                                      });
+
+                                      const multiAccDevices = Object.entries(uuidGroups).filter(([_, g]) => g.emails.size > 1);
+
+                                      if (multiAccDevices.length === 0) {
+                                        return (
+                                          <div className={`p-3 rounded-lg border text-xs text-center italic ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                            No multi-account device fingerprints detected. All users appear isolated.
+                                          </div>
+                                        );
+                                      }
+
+                                      return multiAccDevices.map(([uuid, group]) => (
+                                        <div key={uuid} className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 space-y-3">
+                                          <div className="flex items-center justify-between">
+                                            <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+                                              <span>⚠️ MULTI-ACCOUNT THREAT DETECTED</span>
+                                            </div>
+                                            <div className="text-[10px] font-mono text-slate-500">ID: {uuid}</div>
+                                          </div>
+                                          
+                                          <div className="text-xs text-slate-300">
+                                            Device UUID <code className="bg-slate-900 px-1 py-0.5 rounded font-mono text-teal-400">{uuid}</code> is shared by <span className="font-bold text-white text-sm">{group.emails.size}</span> registered email profiles:
+                                          </div>
+
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-3 border-l-2 border-rose-500/30">
+                                            {Array.from(group.emails).map(email => (
+                                              <div key={email} className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 font-mono">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+                                                {email}
+                                              </div>
+                                            ))}
+                                          </div>
+
+                                          <div className="text-[10px] text-slate-400 font-mono">
+                                            IP Addresses Used: {Array.from(group.ips).join(', ') || 'Unknown'}
+                                          </div>
+
+                                          <div className="flex flex-wrap gap-2 pt-1.5">
+                                            <button
+                                              onClick={async () => {
+                                                setSecuritySubmitLoading(true);
+                                                try {
+                                                  const res = await callApi({
+                                                    action: 'addToBlacklist',
+                                                    type: 'device',
+                                                    value: uuid,
+                                                    reason: `Multi-account mapping abuse: Linked to ${Array.from(group.emails).join(', ')}`
+                                                  });
+                                                  if (res.success) {
+                                                    addNotification(`Blocked device: ${uuid}`);
+                                                    fetchSecurityData();
+                                                    fetchRegisteredUsers();
+                                                  }
+                                                } catch (e) {
+                                                  console.error(e);
+                                                } finally {
+                                                  setSecuritySubmitLoading(false);
+                                                }
+                                              }}
+                                              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer"
+                                            >
+                                              Block Device Fingerprint
+                                            </button>
+                                            {Array.from(group.ips).map(ip => (
+                                              <button
+                                                key={ip}
+                                                onClick={async () => {
+                                                  setSecuritySubmitLoading(true);
+                                                  try {
+                                                    const res = await callApi({
+                                                      action: 'addToBlacklist',
+                                                      type: 'ip',
+                                                      value: ip,
+                                                      reason: `Multi-account mapping IP abuse: Linked to ${Array.from(group.emails).join(', ')}`
+                                                    });
+                                                    if (res.success) {
+                                                      addNotification(`Blocked IP address: ${ip}`);
+                                                      fetchSecurityData();
+                                                      fetchRegisteredUsers();
+                                                    }
+                                                  } catch (e) {
+                                                    console.error(e);
+                                                  } finally {
+                                                    setSecuritySubmitLoading(false);
+                                                  }
+                                                }}
+                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded bg-rose-950 text-rose-400 hover:bg-rose-900 border border-rose-800 transition cursor-pointer"
+                                              >
+                                                Block IP: {ip}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ));
+                                    })()
+                                  )}
+                                </div>
+                              </div>
+
+                              <hr className="border-slate-800" />
+
+                              {/* Active Blacklist Registry */}
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400 mb-3">
+                                  Active Blacklisted Entities Registry ({securityBlacklist.length})
+                                </h4>
+                                
+                                <div className="space-y-2">
+                                  {securityBlacklist.length === 0 ? (
+                                    <div className="text-xs text-slate-500 italic py-4 text-center">
+                                      No entities currently blacklisted. Access is open.
+                                    </div>
+                                  ) : (
+                                    securityBlacklist.map((item) => (
+                                      <div key={item.id} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${darkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                              item.type === 'email' ? 'bg-blue-500/20 text-blue-400' : item.type === 'ip' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'
+                                            }`}>
+                                              {item.type}
+                                            </span>
+                                            <span className="text-xs font-bold font-mono text-white">{item.value}</span>
+                                          </div>
+                                          <div className="text-[10px] text-slate-400">
+                                            Reason: <span className="italic">{item.reason}</span>
+                                          </div>
+                                          <div className="text-[9px] text-slate-500">
+                                            Banned on: {new Date(item.created_at || item.createdAt || Date.now()).toLocaleString()}
+                                          </div>
+                                        </div>
+                                        <button
+                                          onClick={async () => {
+                                            if (!confirm("Are you sure you want to unblock this entry?")) return;
+                                            try {
+                                              const res = await callApi({
+                                                action: 'removeFromBlacklist',
+                                                id: item.id
+                                              });
+                                              if (res.success) {
+                                                addNotification("Entity successfully unblocked.");
+                                                fetchSecurityData();
+                                                fetchRegisteredUsers();
+                                              }
+                                            } catch (e) {
+                                              console.error(e);
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+                                        >
+                                          Unblock
+                                        </button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
                               </div>
                             </div>
                           ) : null
@@ -9009,10 +9457,35 @@ export default function App() {
                   }
                   setAuthLoading(true);
                   try {
+                    // Generate/retrieve persistent device UUID
+                    let devId = localStorage.getItem('crwo_device_id') || '';
+                    if (!devId) {
+                      devId = 'device-' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                      localStorage.setItem('crwo_device_id', devId);
+                    }
+                    setDeviceUuid(devId);
+                    // Fetch IP (best-effort)
+                    let ip = clientIpAddress || '';
+                    if (!ip) {
+                      try { const ipRes = await fetch('https://api.ipify.org?format=json'); const ipJson = await ipRes.json(); ip = ipJson.ip || ''; } catch {}
+                      if (ip) setClientIpAddress(ip);
+                    }
+                    // Blacklist check FIRST for both Login and Signup
+                    const checkRes = await callApi({ action: 'checkBlacklist', email: authEmail, deviceUuid: devId, ipAddress: ip });
+                    if (checkRes && checkRes.isBlocked) {
+                      setIsBlocked(true);
+                      setBlockReason(checkRes.reason || 'Account blocked by admin.');
+                      setAuthLoading(false);
+                      setLoginOpen(false);
+                      return;
+                    }
+
                     if (loginTab === 'login') {
                       const res = await callApi({ action: 'login', email: authEmail, password: authPassword });
                       if (res.success) {
                         addNotification(`Welcome back, ${res.name || authEmail}!`);
+                        // Log device in background
+                        callApi({ action: 'logUserDevice', email: res.email, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
                         setUserEmail(res.email);
                         setUserName(res.name || '');
                         setUserId(res.userId || '');
@@ -9037,6 +9510,8 @@ export default function App() {
                       const res = await callApi({ action: 'signup', email: authEmail, password: authPassword, name: authName });
                       if (res.success) {
                         addNotification('Signup successful! Auto-logging in...');
+                        // Log device in background
+                        callApi({ action: 'logUserDevice', email: authEmail, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
                         setUserEmail(authEmail);
                         setUserName(authName);
                         setUserId(res.userId);
