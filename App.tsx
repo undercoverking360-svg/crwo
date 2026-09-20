@@ -1711,12 +1711,6 @@ export default function App() {
   }, [userEmail]);
 
   useEffect(() => {
-    if (activeTab === 'planBook' && userEmail && !userKyc && !isUserKycLoading) {
-      fetchUserKyc(userEmail);
-    }
-  }, [activeTab, userEmail]);
-
-  useEffect(() => {
     if (trafficPortalOpen) {
       try {
         const cached = localStorage.getItem('crwo_traffic_records_cache');
@@ -1772,6 +1766,12 @@ export default function App() {
   useEffect(() => {
     if (activeTab === 'courier' && userEmail) {
       fetchUserCouriers(userEmail);
+    }
+  }, [activeTab, userEmail]);
+
+  useEffect(() => {
+    if (activeTab === 'planBook' && userEmail && !userKyc && !isUserKycLoading) {
+      fetchUserKyc(userEmail);
     }
   }, [activeTab, userEmail]);
 
