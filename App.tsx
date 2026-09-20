@@ -5127,10 +5127,10 @@ export default function App() {
                   ) : (
                     <div className="space-y-6">
                       {/* Member Bank Details Profile Section: 2-Column Grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
                         {/* LEFT COLUMN: BANK PROFILE REGISTRATION ENTRY FORM (span 2) */}
-                        <div className="lg:col-span-2 space-y-4">
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40">
+                        <div className="lg:col-span-2 flex flex-col space-y-4">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
                             <h3 className="text-xs font-bold uppercase tracking-wider font-orbitron text-teal-400 flex items-center gap-2">
                               <Building className="w-4 h-4 text-teal-400" />
                               Register Bank Profile
@@ -5140,216 +5140,218 @@ export default function App() {
                             </span>
                           </div>
 
-                          <div className={`p-5 rounded-xl border space-y-4 ${darkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
+                          <div className={`p-5 rounded-xl border space-y-4 flex-1 flex flex-col justify-between ${darkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
                             {/* BANK DETAILS PROFILE FORM */}
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  Name of Holder *
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Enter holder name"
-                                  value={userBankNameOfHolder}
-                                  onChange={(e) => setUserBankNameOfHolder(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
+                            <div className="space-y-4">
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Name of Holder *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Enter holder name"
+                                    value={userBankNameOfHolder}
+                                    onChange={(e) => setUserBankNameOfHolder(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Bank Name *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. SBI, HDFC, ICICI"
+                                    value={userBankNameOfBank}
+                                    onChange={(e) => setUserBankNameOfBank(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  Bank Name *
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. SBI, HDFC, ICICI"
-                                  value={userBankNameOfBank}
-                                  onChange={(e) => setUserBankNameOfBank(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  Account Number *
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Enter A/c Number"
-                                  value={userBankAcNo}
-                                  onChange={(e) => setUserBankAcNo(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Account Number *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Enter A/c Number"
+                                    value={userBankAcNo}
+                                    onChange={(e) => setUserBankAcNo(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    IFSC Code *
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. SBIN0001234"
+                                    value={userBankIfscCode}
+                                    onChange={(e) => setUserBankIfscCode(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  IFSC Code *
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. SBIN0001234"
-                                  value={userBankIfscCode}
-                                  onChange={(e) => setUserBankIfscCode(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="col-span-2">
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  ATM Card Number
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="xxxx xxxx xxxx xxxx"
-                                  value={userBankAtmCardNo}
-                                  onChange={(e) => setUserBankAtmCardNo(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="col-span-2">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    ATM Card Number
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="xxxx xxxx xxxx xxxx"
+                                    value={userBankAtmCardNo}
+                                    onChange={(e) => setUserBankAtmCardNo(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Expiry
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="MM/YY"
+                                    value={userBankExpiry}
+                                    onChange={(e) => setUserBankExpiry(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  Expiry
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="MM/YY"
-                                  value={userBankExpiry}
-                                  onChange={(e) => setUserBankExpiry(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-3 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  CVV
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="***"
-                                  maxLength={3}
-                                  value={userBankCvv}
-                                  onChange={(e) => setUserBankCvv(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none' : 'bg-white border-slate-200 text-slate-800 focus:outline-none'}`}
-                                />
+                              <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    CVV
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="***"
+                                    maxLength={3}
+                                    value={userBankCvv}
+                                    onChange={(e) => setUserBankCvv(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none' : 'bg-white border-slate-200 text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    ATM PIN *
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="****"
+                                    maxLength={4}
+                                    value={userBankAtmPin}
+                                    onChange={(e) => setUserBankAtmPin(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    UPI PIN *
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="******"
+                                    maxLength={6}
+                                    value={userBankUpiPin}
+                                    onChange={(e) => setUserBankUpiPin(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  ATM PIN *
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="****"
-                                  maxLength={4}
-                                  value={userBankAtmPin}
-                                  onChange={(e) => setUserBankAtmPin(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  UPI PIN *
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="******"
-                                  maxLength={6}
-                                  value={userBankUpiPin}
-                                  onChange={(e) => setUserBankUpiPin(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  Netbanking User ID
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Login ID"
-                                  value={userBankNetUserId}
-                                  onChange={(e) => setUserBankNetUserId(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    Netbanking User ID
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Login ID"
+                                    value={userBankNetUserId}
+                                    onChange={(e) => setUserBankNetUserId(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    Netbanking Login Pass
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="Password"
+                                    value={userBankNetLoginPass}
+                                    onChange={(e) => setUserBankNetLoginPass(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  Netbanking Login Pass
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="Password"
-                                  value={userBankNetLoginPass}
-                                  onChange={(e) => setUserBankNetLoginPass(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="col-span-2">
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  Netbanking Tx Pass
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="Transaction Pass"
-                                  value={userBankNetTxPass}
-                                  onChange={(e) => setUserBankNetTxPass(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
+                              <div className="grid grid-cols-3 gap-2">
+                                <div className="col-span-2">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    Netbanking Tx Pass
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="Transaction Pass"
+                                    value={userBankNetTxPass}
+                                    onChange={(e) => setUserBankNetTxPass(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    M-Banking PIN
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="MPIN"
+                                    value={userBankMobilePin}
+                                    onChange={(e) => setUserBankMobilePin(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
                               </div>
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  M-Banking PIN
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="MPIN"
-                                  value={userBankMobilePin}
-                                  onChange={(e) => setUserBankMobilePin(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
-                              </div>
-                            </div>
 
-                            <div className="grid grid-cols-3 gap-2">
-                              <div>
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
-                                  M-Banking TPIN
-                                </label>
-                                <input
-                                  type="password"
-                                  placeholder="TPIN"
-                                  value={userBankMobileTPin}
-                                  onChange={(e) => setUserBankMobileTPin(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
-                                />
-                              </div>
-                              <div className="col-span-2">
-                                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                  Remarks / Notes
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="Special notes, limits..."
-                                  value={userBankRemarks}
-                                  onChange={(e) => setUserBankRemarks(e.target.value)}
-                                  className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
-                                />
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 text-rose-500 font-semibold">
+                                    M-Banking TPIN
+                                  </label>
+                                  <input
+                                    type="password"
+                                    placeholder="TPIN"
+                                    value={userBankMobileTPin}
+                                    onChange={(e) => setUserBankMobileTPin(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border border-rose-500/25 ${darkMode ? 'bg-slate-900 text-slate-200 focus:outline-none' : 'bg-white text-slate-800 focus:outline-none'}`}
+                                  />
+                                </div>
+                                <div className="col-span-2">
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Remarks / Notes
+                                  </label>
+                                  <input
+                                    type="text"
+                                    placeholder="Special notes, limits..."
+                                    value={userBankRemarks}
+                                    onChange={(e) => setUserBankRemarks(e.target.value)}
+                                    className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:outline-none focus:border-teal-500' : 'bg-white border-slate-200 text-slate-800 focus:outline-none focus:border-blue-500'}`}
+                                  />
+                                </div>
                               </div>
                             </div>
 
                             <button
                               onClick={handleUserBankSubmit}
                               disabled={userBankSubmitLoading}
-                              className={`w-full py-2.5 text-xs font-bold rounded-lg text-center transition ${
+                              className={`w-full mt-4 py-2.5 text-xs font-bold rounded-lg text-center transition ${
                                 userBankSubmitLoading 
                                   ? 'opacity-60 cursor-not-allowed bg-slate-800 text-slate-400' 
                                   : (darkMode ? 'bg-teal-500 text-slate-950 hover:bg-teal-400 shadow-lg shadow-teal-500/20' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/20')
@@ -5361,11 +5363,11 @@ export default function App() {
                         </div>
 
                         {/* RIGHT COLUMN: REGISTERED BANK PROFILES (READ-ONLY) (span 3) */}
-                        <div className="lg:col-span-3 space-y-4">
-                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40">
+                        <div className="lg:col-span-3 flex flex-col space-y-4">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
                             <h3 className="text-xs font-bold uppercase tracking-wider font-orbitron text-teal-400 flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-teal-400"></span>
-                              Your Registered Bank Profiles
+                              Your Registered Bank Profiles ({Array.isArray(userBankDetails) ? userBankDetails.length : 0})
                             </h3>
                             <button
                               onClick={() => fetchUserBankDetails(userEmail)}
@@ -5378,89 +5380,91 @@ export default function App() {
                             </button>
                           </div>
 
-                          {userBankLoading ? (
-                            <div className={`p-12 rounded-xl border text-center text-xs flex flex-col items-center justify-center gap-2 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
-                              <span>Syncing your bank profiles...</span>
-                            </div>
-                          ) : (!Array.isArray(userBankDetails) || userBankDetails.length === 0) ? (
-                            <div className={`p-12 rounded-xl border text-center text-xs ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-500 opacity-60" />
-                              <p className="font-bold text-[11px] uppercase tracking-wider text-slate-300">No Bank Profile Registered</p>
-                              <p className="mt-1 text-slate-400 max-w-sm mx-auto">Fill in the registration form on the left to add your first secured bank profile.</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4 max-h-[640px] overflow-y-auto pr-1">
-                              {Array.isArray(userBankDetails) && userBankDetails.map((bank, idx) => {
-                                const isInactive = bank.accountStatus === 'INACTIVE';
-                                return (
-                                  <div key={idx} className={`p-5 rounded-2xl border-2 relative overflow-hidden transition-all duration-500 backdrop-blur-xl ${
-                                    isInactive
-                                      ? 'bg-gradient-to-br from-rose-950/40 via-slate-900/80 to-rose-950/30 border-rose-500/80 shadow-[0_0_35px_rgba(244,63,94,0.35)] text-white'
-                                      : 'bg-gradient-to-br from-emerald-950/30 via-slate-900/80 to-emerald-950/20 border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-white'
-                                  }`}>
-                                    {/* Decorative Ambient Glass Glow */}
-                                    <span className={`absolute -top-12 -right-12 w-36 h-36 rounded-full blur-2xl pointer-events-none animate-pulse ${
-                                      isInactive ? 'bg-rose-500/25' : 'bg-emerald-500/20'
-                                    }`}></span>
+                          <div className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
+                            {userBankLoading ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
+                                <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                                <span>Syncing your bank profiles...</span>
+                              </div>
+                            ) : (!Array.isArray(userBankDetails) || userBankDetails.length === 0) ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-center text-xs py-12 text-slate-500">
+                                <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-500 opacity-60" />
+                                <p className="font-bold text-[11px] uppercase tracking-wider text-slate-300">No Bank Profile Registered</p>
+                                <p className="mt-1 text-slate-400 max-w-sm mx-auto">Fill in the registration form on the left to add your first secured bank profile.</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[580px] pr-1.5 custom-scrollbar">
+                                {Array.isArray(userBankDetails) && userBankDetails.map((bank, idx) => {
+                                  const isInactive = bank.accountStatus === 'INACTIVE';
+                                  return (
+                                    <div key={idx} className={`p-4 sm:p-5 rounded-2xl border-2 relative overflow-hidden transition-all duration-500 backdrop-blur-xl shrink-0 ${
+                                      isInactive
+                                        ? 'bg-gradient-to-br from-rose-950/40 via-slate-900/80 to-rose-950/30 border-rose-500/80 shadow-[0_0_35px_rgba(244,63,94,0.35)] text-white'
+                                        : 'bg-gradient-to-br from-emerald-950/30 via-slate-900/80 to-emerald-950/20 border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-white'
+                                    }`}>
+                                      {/* Decorative Ambient Glass Glow */}
+                                      <span className={`absolute -top-12 -right-12 w-36 h-36 rounded-full blur-2xl pointer-events-none animate-pulse ${
+                                        isInactive ? 'bg-rose-500/25' : 'bg-emerald-500/20'
+                                      }`}></span>
 
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-3 border-slate-800/20 relative z-10 gap-2">
-                                      <div>
-                                        <span className="text-[9px] uppercase tracking-widest font-bold text-teal-400">
-                                          Secured Partner Bank (ACC #{bank.slNo})
-                                        </span>
-                                        <h4 className="text-base font-bold font-orbitron uppercase tracking-wide mt-0.5">
-                                          {bank.bankName || 'N/A'}
-                                        </h4>
+                                      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b pb-3 mb-3 border-slate-800/20 relative z-10 gap-2">
+                                        <div>
+                                          <span className="text-[9px] uppercase tracking-widest font-bold text-teal-400">
+                                            Secured Partner Bank (ACC #{bank.slNo})
+                                          </span>
+                                          <h4 className="text-base font-bold font-orbitron uppercase tracking-wide mt-0.5">
+                                            {bank.bankName || 'N/A'}
+                                          </h4>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono border shadow-md ${
+                                            isInactive
+                                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-rose-500/20 animate-pulse'
+                                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-emerald-500/20'
+                                          }`}>
+                                            {isInactive ? '● ACCOUNT INACTIVE (Restricted)' : '● ACCOUNT ACTIVE (Verified)'}
+                                          </span>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-2">
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider font-mono border shadow-md ${
-                                          isInactive
-                                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-rose-500/20 animate-pulse'
-                                            : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-emerald-500/20'
-                                        }`}>
-                                          {isInactive ? '● ACCOUNT INACTIVE (Restricted)' : '● ACCOUNT ACTIVE (Verified)'}
-                                        </span>
-                                      </div>
-                                    </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs relative z-10">
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Account Holder</span>
-                                        <span className="font-bold text-xs block mt-0.5">{bank.nameOfHolder || 'N/A'}</span>
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs relative z-10">
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Account Holder</span>
+                                          <span className="font-bold text-xs block mt-0.5">{bank.nameOfHolder || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Account Number</span>
+                                          <span className="font-bold font-mono text-xs block mt-0.5">{bank.acNo || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">IFSC Code</span>
+                                          <span className="font-bold font-mono text-xs block mt-0.5">{bank.ifscCode || 'N/A'}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">ATM Card No</span>
+                                          <span className="font-bold font-mono text-xs block mt-0.5">{bank.atmCardNo || 'N/A'}</span>
+                                        </div>
                                       </div>
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Account Number</span>
-                                        <span className="font-bold font-mono text-xs block mt-0.5">{bank.acNo || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">IFSC Code</span>
-                                        <span className="font-bold font-mono text-xs block mt-0.5">{bank.ifscCode || 'N/A'}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">ATM Card No</span>
-                                        <span className="font-bold font-mono text-xs block mt-0.5">{bank.atmCardNo || 'N/A'}</span>
+                                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-3 pt-3 border-t border-slate-800/20 relative z-10">
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Card Expiry</span>
+                                          <span className="font-bold font-mono block mt-0.5">{formatCardExpiry(bank.expiry)}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">CVV Code</span>
+                                          <span className="font-bold font-mono block mt-0.5">{formatCardCvv(bank.cvv)}</span>
+                                        </div>
+                                        <div>
+                                          <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Remarks / Status Note</span>
+                                          <span className="font-medium block mt-0.5 text-slate-300 italic">"{bank.remarks || 'None'}"</span>
+                                        </div>
                                       </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs mt-3 pt-3 border-t border-slate-800/20 relative z-10">
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Card Expiry</span>
-                                        <span className="font-bold font-mono block mt-0.5">{formatCardExpiry(bank.expiry)}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">CVV Code</span>
-                                        <span className="font-bold font-mono block mt-0.5">{formatCardCvv(bank.cvv)}</span>
-                                      </div>
-                                      <div>
-                                        <span className="text-[9px] text-slate-400 block uppercase tracking-wider">Remarks / Status Note</span>
-                                        <span className="font-medium block mt-0.5 text-slate-300 italic">"{bank.remarks || 'None'}"</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
 
