@@ -622,7 +622,22 @@ export default function App() {
   const [securitySubmitLoading, setSecuritySubmitLoading] = useState(false);
 
   // Active traffic view sub-tab
-  const [trafficTab, setTrafficTab] = useState<'database' | 'loss_fund' | 'turnover' | 'holders' | 'manager_comm' | 'head_comm' | 'logs' | 'admin_console' | 'video_log'>('logs');
+  const [trafficTab, setTrafficTab] = useState<'database' | 'loss_fund' | 'turnover' | 'holders' | 'manager_comm' | 'head_comm' | 'logs' | 'admin_console' | 'video_log' | 'community'>('logs');
+
+  // Community Portal Modal & Admin States
+  const [communityModalOpen, setCommunityModalOpen] = useState(false);
+  const [communityLinks, setCommunityLinks] = useState<any[]>(() => {
+    try {
+      const c = localStorage.getItem('crwo_community_links_cache');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  });
+  const [isCommunityLoading, setIsCommunityLoading] = useState(false);
+  const [commPlatform, setCommPlatform] = useState('TELEGRAM');
+  const [commTitle, setCommTitle] = useState('');
+  const [commLogo, setCommLogo] = useState('');
+  const [commJoinLink, setCommJoinLink] = useState('');
+  const [commSubmitLoading, setCommSubmitLoading] = useState(false);
 
   // Search Button Modal state
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -852,6 +867,87 @@ export default function App() {
       addNotification("Connection error.");
     } finally {
       setAdminVideoSubmitLoading(false);
+    }
+  };
+
+  const fetchCommunityLinks = async () => {
+    setIsCommunityLoading(true);
+    try {
+      const res = await callApi({ action: 'getCommunityLinks' });
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setCommunityLinks(res.data);
+        try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(res.data)); } catch (e) {}
+      } else {
+        try {
+          const c = localStorage.getItem('crwo_community_links_cache');
+          if (c) setCommunityLinks(JSON.parse(c));
+          else setCommunityLinks([]);
+        } catch (e) {
+          setCommunityLinks([]);
+        }
+      }
+    } catch (err) {
+      console.error("fetchCommunityLinks error:", err);
+      try {
+        const c = localStorage.getItem('crwo_community_links_cache');
+        if (c) setCommunityLinks(JSON.parse(c));
+      } catch (e) {}
+    } finally {
+      setIsCommunityLoading(false);
+    }
+  };
+
+  const handleAddCommunityLink = async () => {
+    if (!commPlatform.trim() || !commTitle.trim() || !commJoinLink.trim()) {
+      addNotification("Platform, Title, and Permanent Joining Link are required.");
+      return;
+    }
+    setCommSubmitLoading(true);
+    try {
+      const res = await callApi({
+        action: 'addCommunityLink',
+        platform: commPlatform.trim(),
+        title: commTitle.trim(),
+        logo: commLogo.trim(),
+        link: commJoinLink.trim()
+      });
+      const newEntry = {
+        id: Date.now(),
+        slNo: communityLinks.length + 1,
+        platform: commPlatform.trim(),
+        title: commTitle.trim(),
+        logo: commLogo.trim(),
+        link: commJoinLink.trim(),
+        createdAt: new Date().toISOString()
+      };
+      const updated = [...communityLinks, newEntry];
+      setCommunityLinks(updated);
+      try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(updated)); } catch (e) {}
+
+      addNotification("Community Platform Link added successfully!");
+      setCommTitle('');
+      setCommLogo('');
+      setCommJoinLink('');
+      fetchCommunityLinks();
+    } catch (err) {
+      console.error(err);
+      addNotification("Saved community link locally!");
+    } finally {
+      setCommSubmitLoading(false);
+    }
+  };
+
+  const handleDeleteCommunityLink = async (id: number) => {
+    if (!confirm("Are you sure you want to remove this community link?")) return;
+    try {
+      await callApi({ action: 'deleteCommunityLink', id });
+      const filtered = communityLinks.filter((item: any) => item.id !== id);
+      setCommunityLinks(filtered);
+      try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(filtered)); } catch (e) {}
+      addNotification("Community link removed.");
+      fetchCommunityLinks();
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -2481,11 +2577,13 @@ export default function App() {
             {/* Discord Community Button */}
             <button 
               onClick={() => {
-                window.open(DISCORD_INVITE_URL, "_blank");
-                addNotification("Opening CRWO Discord Server...");
+                fetchCommunityLinks();
+                setCommunityModalOpen(true);
               }}
-              className={`py-1.5 rounded-lg flex items-center justify-center gap-1 border text-[10px] font-bold transition-all duration-200 ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              className={`py-1.5 rounded-lg flex items-center justify-center gap-1 border text-[10px] font-bold transition-all duration-200 cursor-pointer ${
+                communityModalOpen
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.2)]' : 'bg-blue-100 border-blue-500 text-blue-600')
+                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-350 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
@@ -2631,11 +2729,13 @@ export default function App() {
             {/* Community Chat */}
             <button 
               onClick={() => {
-                window.open(DISCORD_INVITE_URL, "_blank");
-                addNotification("Opening CRWO Discord Server...");
+                fetchCommunityLinks();
+                setCommunityModalOpen(true);
               }}
-              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border text-xs font-semibold transition-all duration-200 ${
-                darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-2 border text-xs font-semibold transition-all duration-200 cursor-pointer ${
+                communityModalOpen
+                  ? (darkMode ? 'bg-teal-500/20 border-teal-400 text-teal-400 font-bold shadow-[0_0_15px_rgba(20,184,166,0.25)]' : 'bg-blue-100 border-blue-500 text-blue-600 font-bold')
+                  : (darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100')
               }`}
             >
               <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
@@ -7984,6 +8084,19 @@ export default function App() {
                       >
                         📁 Video Logs
                       </button>
+                      <button
+                        onClick={() => {
+                          setTrafficTab('community');
+                          fetchCommunityLinks();
+                        }}
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition cursor-pointer ${
+                          trafficTab === 'community'
+                            ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)] font-bold'
+                            : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                        }`}
+                      >
+                        🌐 Community
+                      </button>
                     </div>
 
                     {/* SUB-VIEW 1: DATABASE */}
@@ -9208,6 +9321,174 @@ export default function App() {
                       </div>
                     )}
 
+                    {/* SUB-VIEW 10: COMMUNITY PORTAL MANAGEMENT */}
+                    {trafficTab === 'community' && (
+                      <div className="space-y-6">
+                        <div className="text-sm font-semibold text-teal-400 uppercase tracking-widest font-orbitron border-b border-slate-800/80 pb-2 flex items-center justify-between">
+                          <span>🌐 Official Community Platform Links Setup</span>
+                          <span className="text-xs font-mono text-slate-400">{communityLinks.length} Active Groups</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                          {/* Form to Add New Platform */}
+                          <div className="lg:col-span-2 space-y-4">
+                            <div className="p-5 rounded-2xl border border-slate-800 bg-slate-950/60 space-y-4">
+                              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-900 pb-1.5 flex items-center gap-1.5">
+                                <span>➕</span> Add Community Platform Link
+                              </h4>
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Platform *
+                                  </label>
+                                  <select
+                                    value={commPlatform}
+                                    onChange={(e) => setCommPlatform(e.target.value)}
+                                    className="w-full px-3 py-2 text-xs rounded-lg border bg-slate-900 border-slate-800 text-teal-400 font-bold focus:outline-none"
+                                  >
+                                    <option value="TELEGRAM">Telegram</option>
+                                    <option value="WHATSAPP">WhatsApp</option>
+                                    <option value="DISCORD">Discord</option>
+                                    <option value="TWITTER">X / Twitter</option>
+                                    <option value="FACEBOOK">Facebook</option>
+                                    <option value="YOUTUBE">YouTube</option>
+                                    <option value="OTHER">Other Platform</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Group / Channel Title *
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="e.g. CRWO Official Telegram / Traders Hub"
+                                    value={commTitle}
+                                    onChange={(e) => setCommTitle(e.target.value)}
+                                    className="w-full px-3 py-2 text-xs rounded-lg border bg-slate-900 border-slate-800 text-slate-200 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Permanent Joining Link *
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="e.g. https://t.me/... or https://chat.whatsapp.com/..."
+                                    value={commJoinLink}
+                                    onChange={(e) => setCommJoinLink(e.target.value)}
+                                    className="w-full px-3 py-2 text-xs rounded-lg border bg-slate-900 border-slate-800 text-slate-200 focus:outline-none"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                                    Platform Logo URL (Optional)
+                                  </label>
+                                  <input 
+                                    type="text" 
+                                    placeholder="https://... (leave empty for automatic platform icon)"
+                                    value={commLogo}
+                                    onChange={(e) => setCommLogo(e.target.value)}
+                                    className="w-full px-3 py-2 text-xs rounded-lg border bg-slate-900 border-slate-800 text-slate-200 focus:outline-none"
+                                  />
+                                </div>
+
+                                <button
+                                  onClick={handleAddCommunityLink}
+                                  disabled={commSubmitLoading}
+                                  className="w-full py-2.5 text-xs font-bold rounded-xl bg-teal-500 text-slate-950 hover:bg-teal-400 transition cursor-pointer"
+                                >
+                                  {commSubmitLoading ? 'Saving Link...' : 'Publish Community Link'}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Live Community Links Table / Cards */}
+                          <div className="lg:col-span-3 space-y-4">
+                            <div className="p-5 rounded-2xl border border-slate-800 bg-slate-950/40 space-y-4">
+                              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-900 pb-1.5 flex items-center justify-between">
+                                <span>📋 Active Configured Community Links</span>
+                                <button
+                                  onClick={fetchCommunityLinks}
+                                  className="text-[10px] text-teal-400 hover:underline cursor-pointer"
+                                >
+                                  Refresh
+                                </button>
+                              </h4>
+
+                              {isCommunityLoading ? (
+                                <div className="py-8 text-center text-xs text-slate-400">
+                                  Loading community registry...
+                                </div>
+                              ) : communityLinks.length === 0 ? (
+                                <div className="py-8 text-center text-xs text-slate-500 italic">
+                                  No extra community links yet. Default Discord is active on website.
+                                </div>
+                              ) : (
+                                <div className="space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar pr-1">
+                                  {communityLinks.map((item: any) => (
+                                    <div 
+                                      key={item.id} 
+                                      className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3"
+                                    >
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
+                                          {item.logo ? (
+                                            <img src={item.logo} alt={item.platform} className="w-6 h-6 object-contain rounded" />
+                                          ) : (
+                                            <MessageSquare className="w-5 h-5 text-teal-400" />
+                                          )}
+                                        </div>
+                                        <div>
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                                              {item.platform}
+                                            </span>
+                                            <span className="text-xs font-bold text-slate-200">
+                                              {item.title}
+                                            </span>
+                                          </div>
+                                          <a 
+                                            href={item.link} 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-[10px] text-indigo-400 hover:underline font-mono truncate block max-w-[280px] mt-1"
+                                          >
+                                            {item.link}
+                                          </a>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center gap-2">
+                                        <a
+                                          href={item.link}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="px-2.5 py-1 text-[10px] font-bold rounded bg-teal-500 text-slate-950 hover:bg-teal-400 transition"
+                                        >
+                                          Open
+                                        </a>
+                                        <button
+                                          onClick={() => handleDeleteCommunityLink(item.id)}
+                                          className="p-1 rounded text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                                          title="Delete Link"
+                                        >
+                                          <Trash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 )}
               </div>
@@ -10387,6 +10668,113 @@ export default function App() {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* COMMUNITY GROUPS & PLATFORMS MODAL */}
+      {communityModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
+          <div className={`w-full max-w-lg p-6 rounded-2xl border ${darkMode ? 'bg-slate-900 border-teal-500/30 text-white' : 'bg-white border-slate-200 text-slate-800'} shadow-2xl relative max-h-[85vh] flex flex-col`}>
+            <button
+              onClick={() => setCommunityModalOpen(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 font-bold cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-3 border-b pb-4 mb-4 border-slate-800/60 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold font-orbitron uppercase tracking-wider text-teal-400">
+                  CRWO Community Hub
+                </h3>
+                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Join official platforms & connect with member groups
+                </p>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
+              {/* DEFAULT OFFICIAL DISCORD */}
+              <div className="p-4 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 to-slate-900/60 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                        DISCORD (PRIMARY)
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-white mt-1">Official CRWO Discord Server</p>
+                    <p className="text-[10px] text-slate-400">Live Voice, Community Channels & Support</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    window.open(DISCORD_INVITE_URL, "_blank");
+                    addNotification("Opening CRWO Discord Server...");
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition shrink-0 cursor-pointer"
+                >
+                  Join Server
+                </button>
+              </div>
+
+              {/* DYNAMIC CONFIGURABLE COMMUNITY LINKS FROM DATABASE */}
+              {isCommunityLoading ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  Loading community channels...
+                </div>
+              ) : (
+                communityLinks.map((item: any) => (
+                  <div 
+                    key={item.id} 
+                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
+                        {item.logo ? (
+                          <img src={item.logo} alt={item.platform} className="w-6 h-6 object-contain rounded" />
+                        ) : (
+                          <Users className="w-5 h-5 text-teal-400" />
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                          {item.platform}
+                        </span>
+                        <p className="text-xs font-bold text-slate-200 mt-1">{item.title}</p>
+                        <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{item.link}</p>
+                      </div>
+                    </div>
+
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 transition shrink-0"
+                    >
+                      Connect
+                    </a>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between items-center text-[10px] text-slate-500">
+              <span>Official Community Hub V2.0</span>
+              <button
+                onClick={() => setCommunityModalOpen(false)}
+                className="px-3 py-1 rounded-lg border border-slate-700 text-slate-300 hover:text-white cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
