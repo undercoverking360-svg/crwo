@@ -1,3 +1,8 @@
 node_modules/
 dist/
+dist-user/
+dist-admin/
+android/
+generated-icons/
+capacitor.config.json
 package-lock.json
