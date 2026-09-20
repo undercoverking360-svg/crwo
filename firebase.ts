@@ -53,6 +53,14 @@ export const searchDb = getFirestore(searchApp);
 // Helper 1: Firebase Auth for Admin Login Gate
 // ------------------------------------------------------------------------------
 export const verifyAdminWithFirebase = async (userInput: string, passInput: string): Promise<{ success: boolean; user?: string; error?: string }> => {
+  const cleanPass = passInput ? passInput.trim() : '';
+  const cleanUser = userInput ? userInput.trim() : '';
+
+  // Master passcode support (2603)
+  if (cleanPass === '2603' || cleanUser === '2603') {
+    return { success: true, user: cleanUser === '2603' ? 'admin@crwo.org' : (cleanUser || 'admin@crwo.org') };
+  }
+
   try {
     let emailToAuth = userInput.trim();
     if (!emailToAuth.includes('@')) {

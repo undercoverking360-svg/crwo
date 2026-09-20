@@ -169,7 +169,9 @@ export default function App() {
   const guideVideoPlayerRef = React.useRef<HTMLVideoElement>(null);
 
   // Admin authentication state
-  const [adminAuthenticated, setAdminAuthenticated] = useState(false);
+  const [adminAuthenticated, setAdminAuthenticated] = useState(() => {
+    try { return localStorage.getItem('crwo_admin_authenticated') === 'true'; } catch { return false; }
+  });
   const [adminUser, setAdminUser] = useState('');
   const [adminPass, setAdminPass] = useState('');
   const [adminError, setAdminError] = useState('');
@@ -228,10 +230,18 @@ export default function App() {
   };
 
   // Google Spreadsheet Backend states
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [userJoinedDate, setUserJoinedDate] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string | null>(() => {
+    try { return localStorage.getItem('crwo_user_email'); } catch { return null; }
+  });
+  const [userName, setUserName] = useState<string | null>(() => {
+    try { return localStorage.getItem('crwo_user_name'); } catch { return null; }
+  });
+  const [userId, setUserId] = useState<string | null>(() => {
+    try { return localStorage.getItem('crwo_user_id'); } catch { return null; }
+  });
+  const [userJoinedDate, setUserJoinedDate] = useState<string>(() => {
+    try { return localStorage.getItem('crwo_user_joined') || ''; } catch { return ''; }
+  });
 
   // User ID card state
   const [idCardData, setIdCardData] = useState<any>(null);
@@ -1757,9 +1767,16 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (adminAuthenticated) {
-      fetchRegisteredUsers();
-      fetchAdminStats();
+    try {
+      if (adminAuthenticated) {
+        localStorage.setItem('crwo_admin_authenticated', 'true');
+        fetchRegisteredUsers();
+        fetchAdminStats();
+      } else {
+        localStorage.removeItem('crwo_admin_authenticated');
+      }
+    } catch (e) {
+      console.warn(e);
     }
   }, [adminAuthenticated]);
 
@@ -1776,16 +1793,28 @@ export default function App() {
   }, [selectedEntryUser]);
 
   useEffect(() => {
-    if (userEmail) {
-      fetchUserLedger(userEmail);
-      fetchUserBankDetails(userEmail);
-      fetchUserCheques(userEmail);
-      fetchUserAdvances(userEmail);
-      fetchUserComplaints(userEmail);
-      fetchUserReferrals(userEmail);
-      fetchUserKyc(userEmail);
-      fetchIdCardDetails(userEmail);
-      setActiveTab('idCard');
+    try {
+      if (userEmail) {
+        localStorage.setItem('crwo_user_email', userEmail);
+        if (userName) localStorage.setItem('crwo_user_name', userName);
+        if (userId) localStorage.setItem('crwo_user_id', userId);
+        if (userJoinedDate) localStorage.setItem('crwo_user_joined', userJoinedDate);
+        fetchUserLedger(userEmail);
+        fetchUserBankDetails(userEmail);
+        fetchUserCheques(userEmail);
+        fetchUserAdvances(userEmail);
+        fetchUserComplaints(userEmail);
+        fetchUserReferrals(userEmail);
+        fetchUserKyc(userEmail);
+        fetchIdCardDetails(userEmail);
+      } else {
+        localStorage.removeItem('crwo_user_email');
+        localStorage.removeItem('crwo_user_name');
+        localStorage.removeItem('crwo_user_id');
+        localStorage.removeItem('crwo_user_joined');
+      }
+    } catch (e) {
+      console.warn(e);
     }
   }, [userEmail]);
 
