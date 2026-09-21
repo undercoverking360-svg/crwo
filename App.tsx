@@ -2310,6 +2310,7 @@ export default function App() {
         { id: 'complain', label: 'Help & Complain', mobileLabel: 'Complain', icon: HelpCircle },
         { id: 'courier', label: 'Courier & Delivery', mobileLabel: 'Courier', icon: Package },
         { id: 'referral', label: 'Referral Portal', mobileLabel: 'Referral', icon: Users },
+        { id: 'notifications', label: 'Notifications', mobileLabel: 'Notif', icon: Bell },
       ];
 
   // Interactive modal/panel states
@@ -2740,6 +2741,81 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {/* ADMIN PENDING REQUESTS TELEMETRY MODAL */}
+      {isAdminNotificationOpen && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl p-4 space-y-3 font-sans max-h-[85vh] flex flex-col text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-amber-400">
+                  PENDING REQUESTS ({adminPendingRequests.length})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => fetchAdminPendingRequests()}
+                  className="text-[10px] text-teal-400 hover:text-teal-300 font-semibold cursor-pointer px-2 py-1 rounded bg-slate-900 border border-slate-800"
+                >
+                  {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button
+                  onClick={() => setIsAdminNotificationOpen(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar flex-1 max-h-[60vh]">
+              {adminPendingRequests.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
+                  No pending user queries! All requests are resolved.
+                </div>
+              ) : (
+                adminPendingRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    onClick={() => {
+                      setAdminFormTab(req.moduleTab || 'entry');
+                      setSelectedEntryUser(req.email);
+                      setIsAdminNotificationOpen(false);
+                      addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
+                    }}
+                    className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/80 hover:border-amber-500/50 hover:bg-slate-850/90 transition cursor-pointer text-left space-y-1 group"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-teal-400">
+                        {req.userId || 'MEMBER'}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                        ● PENDING
+                      </span>
+                    </div>
+                    <div className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">
+                      {req.title}
+                    </div>
+                    <div className="text-[11px] text-slate-400 break-all line-clamp-2">
+                      {req.details || req.email}
+                    </div>
+                    <div className="text-[9px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/50">
+                      <span className="truncate">{req.email}</span>
+                      <span className="text-teal-400 font-semibold shrink-0">Touch to Resolve →</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/60">
+              Touch any request to auto-select user & jump to module.
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* USER NOTIFICATION TELEMETRY MODAL */}
       {isUserNotificationOpen && (
@@ -3519,80 +3595,7 @@ export default function App() {
                             )}
                           </button>
 
-                          {/* Telemetry Modal Dialog */}
-                          {isAdminNotificationOpen && (
-                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-                              <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950/98 backdrop-blur-xl shadow-2xl p-4 space-y-3 font-sans max-h-[85vh] flex flex-col">
-                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                  <div className="flex items-center gap-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-                                    <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-amber-400">
-                                      PENDING REQUESTS ({adminPendingRequests.length})
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => fetchAdminPendingRequests()}
-                                      className="text-[10px] text-teal-400 hover:text-teal-300 font-semibold cursor-pointer px-2 py-1 rounded bg-slate-900 border border-slate-800"
-                                    >
-                                      {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
-                                    </button>
-                                    <button
-                                      onClick={() => setIsAdminNotificationOpen(false)}
-                                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar flex-1 max-h-[60vh]">
-                                  {adminPendingRequests.length === 0 ? (
-                                    <div className="py-8 text-center text-xs text-slate-400">
-                                      <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
-                                      No pending user queries! All requests are resolved.
-                                    </div>
-                                  ) : (
-                                    adminPendingRequests.map((req) => (
-                                      <div
-                                        key={req.id}
-                                        onClick={() => {
-                                          setAdminFormTab(req.moduleTab || 'entry');
-                                          setSelectedEntryUser(req.email);
-                                          setIsAdminNotificationOpen(false);
-                                          addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
-                                        }}
-                                        className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/80 hover:border-amber-500/50 hover:bg-slate-850/90 transition cursor-pointer text-left space-y-1 group"
-                                      >
-                                        <div className="flex items-center justify-between gap-2">
-                                          <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-teal-400">
-                                            {req.userId || 'MEMBER'}
-                                          </span>
-                                          <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 text-amber-300">
-                                            ● PENDING
-                                          </span>
-                                        </div>
-                                        <div className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">
-                                          {req.title}
-                                        </div>
-                                        <div className="text-[11px] text-slate-400 break-all line-clamp-2">
-                                          {req.details || req.email}
-                                        </div>
-                                        <div className="text-[9px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/50">
-                                          <span className="truncate">{req.email}</span>
-                                          <span className="text-teal-400 font-semibold shrink-0">Touch to Resolve →</span>
-                                        </div>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
-
-                                <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/60">
-                                  Touch any request to auto-select user & jump to module.
-                                </div>
-                              </div>
-                            </div>
-                          )}
+                          {/* Admin Pending Requests Telemetry button */}
                         </div>
 
                         <button 
@@ -8266,7 +8269,103 @@ export default function App() {
                 </div>
               )}
 
-{activeTab === 'idCard' && (
+              {/* NOTIFICATION TELEMETRY TAB */}
+              {activeTab === 'notifications' && (
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 border-slate-800/40 gap-4">
+                    <div>
+                      <h2 className="text-xl font-bold flex items-center gap-2 font-orbitron uppercase tracking-wider text-teal-400">
+                        <Bell className="w-5 h-5 text-teal-400" />
+                        NOTIFICATION TELEMETRY
+                      </h2>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Track live status updates on your advance requests, support tickets, cheque dispatches, and admin alerts.
+                      </p>
+                    </div>
+                  </div>
+
+                  {!userEmail ? (
+                    <div className="p-8 text-center rounded-2xl border border-slate-800 bg-slate-900/50 space-y-4">
+                      <div className="w-16 h-16 mx-auto rounded-full bg-slate-800/80 flex items-center justify-center border border-slate-700">
+                        <Lock className="w-8 h-8 text-slate-500" />
+                      </div>
+                      <h3 className="text-base font-bold text-slate-200 uppercase tracking-wider font-orbitron">
+                        NOTIFICATION PORTAL LOCKED
+                      </h3>
+                      <p className="text-xs text-slate-400 max-w-md mx-auto">
+                        Please log in to your CRWO member account to view your live telemetry notifications and status alerts.
+                      </p>
+                      <button
+                        onClick={() => { setLoginTab('login'); setLoginOpen(true); }}
+                        className="px-6 py-2.5 text-xs font-bold rounded-xl bg-teal-500 text-slate-950 hover:bg-teal-400 transition cursor-pointer"
+                      >
+                        SIGN IN TO ACCESS TELEMETRY
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 rounded-xl border border-slate-800 bg-slate-900/60">
+                        <div className="flex items-center gap-2 text-xs font-bold font-orbitron text-teal-300">
+                          <span className="w-2.5 h-2.5 rounded-full bg-teal-400 animate-pulse"></span>
+                          LIVE ALERTS FEED ({userTelemetryNotifications.length})
+                        </div>
+                        <button
+                          onClick={() => addNotification('Telemetry feed updated.')}
+                          className="px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900 hover:bg-slate-850 text-slate-300 font-semibold text-xs transition cursor-pointer"
+                        >
+                          Refresh
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {userTelemetryNotifications.length === 0 ? (
+                          <div className="py-12 text-center rounded-xl border border-slate-850 bg-slate-950/40 text-slate-500 space-y-2">
+                            <Bell className="w-8 h-8 mx-auto text-slate-600" />
+                            <p className="text-xs font-semibold">No active telemetry notifications yet.</p>
+                            <p className="text-[10px] text-slate-600">Your status updates for advance claims, tickets & parcels will appear here in real-time.</p>
+                          </div>
+                        ) : (
+                          userTelemetryNotifications.map((n) => (
+                            <div
+                              key={n.id}
+                              className={`p-4 rounded-xl border text-left space-y-1.5 transition ${
+                                n.status === 'RESOLVED'
+                                  ? 'border-emerald-500/30 bg-emerald-500/5'
+                                  : n.status === 'REJECTED'
+                                  ? 'border-rose-500/30 bg-rose-500/5'
+                                  : 'border-amber-500/30 bg-amber-500/5'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between text-xs font-bold font-orbitron">
+                                <span className={
+                                  n.status === 'RESOLVED' ? 'text-emerald-400' :
+                                  n.status === 'REJECTED' ? 'text-rose-400' : 'text-amber-400'
+                                }>
+                                  {n.title}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                  n.status === 'RESOLVED' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
+                                  n.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' :
+                                  'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                }`}>
+                                  ● {n.status || 'PENDING'}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-300">{n.message || n.details}</p>
+                              <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-800/40">
+                                <span>{n.timestamp || 'Recent'}</span>
+                                <span className="font-mono text-teal-400">{n.type || 'SYSTEM ALERT'}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'idCard' && (
                 <div className="space-y-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between border-b pb-4 border-slate-800/40 gap-4">
                     <div>
