@@ -2764,9 +2764,7 @@ export default function App() {
             {!hasNativeNotifPermission && (
               <div className="p-3 rounded-xl border border-teal-500/30 bg-teal-500/10 flex items-center justify-between gap-3">
                 <div className="text-xs leading-tight">
-                  <p className="font-bold text-teal-300">Mobile Screen Push Alerts</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Receive alerts on lock screen when query is resolved</p>
-                </div>
+                  </div>
                 <button
                   onClick={async () => {
                     const granted = await requestNativeNotificationPermission();
@@ -3000,28 +2998,7 @@ export default function App() {
 
                 {/* Right Side Actions: Theme & Account status */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* User Notification Bell */}
-                  <button 
-                    onClick={() => {
-                      setIsUserNotificationOpen(prev => !prev);
-                      requestNativeNotificationPermission().catch(console.warn);
-                    }}
-                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 active:scale-[0.95] cursor-pointer relative ${
-                      userTelemetryNotifications.length > 0
-                        ? 'bg-teal-500/20 border-teal-500/50 text-teal-300 shadow-[0_0_8px_rgba(20,184,166,0.25)]'
-                        : darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600'
-                    }`}
-                    title="User Notifications & Telemetry"
-                  >
-                    <Bell className="w-3.5 h-3.5 text-teal-400" />
-                    {userTelemetryNotifications.length > 0 && (
-                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 text-slate-950 font-black text-[8px] flex items-center justify-center animate-pulse">
-                        {userTelemetryNotifications.length}
-                      </span>
-                    )}
-                  </button>
 
-                  {/* Theme toggle */}
                   <button 
                     onClick={() => setDarkMode(!darkMode)}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 active:scale-[0.95] cursor-pointer ${
@@ -3484,7 +3461,7 @@ export default function App() {
 
           {/* MAIN CONTENT AREA */}
           <main className="lg:col-span-3">
-            <div className={`rounded-2xl border p-6 ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
+            <div className={`rounded-2xl border p-6 min-h-[500px] ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
                             {/* ADMIN VIEW */}
               {activeTab === 'admin' && (
                 !adminAuthenticated ? (
@@ -3745,11 +3722,10 @@ export default function App() {
                           Switch between operational modules to enter records, issue cheques, or resolve member tickets.
                         </p>
                       </div>
-                      <div className="w-full lg:w-auto bg-slate-900 p-2 rounded-xl border border-slate-800 shrink-0">
-                        <div className="grid grid-cols-3 md:flex md:flex-wrap items-center justify-center gap-1.5 w-full">
+                      <div className="flex flex-wrap items-center bg-slate-900 p-1.5 rounded-xl border border-slate-800 gap-1 md:gap-1.5 shrink-0 overflow-x-auto">
                           <button
                             onClick={() => setAdminFormTab('entry')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'entry' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3757,7 +3733,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setAdminFormTab('bank')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'bank' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3765,7 +3741,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setAdminFormTab('cheque')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'cheque' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3773,7 +3749,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setAdminFormTab('advance')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'advance' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3781,7 +3757,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setAdminFormTab('complain')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'complain' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3789,7 +3765,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setAdminFormTab('referral')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'referral' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3797,7 +3773,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => setAdminFormTab('kyc')}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'kyc' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3805,7 +3781,7 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => { setAdminFormTab('courier'); fetchAdminCouriers(); }}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'courier' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
                             }`}
                           >
@@ -3813,13 +3789,12 @@ export default function App() {
                           </button>
                           <button
                             onClick={() => { setAdminFormTab('security' as any); fetchSecurityData(); }}
-                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                            className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
                               adminFormTab === 'security' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-rose-400 hover:text-rose-300'
                             }`}
                           >
                             🛡 Security
                           </button>
-                        </div>
                       </div>
                     </div>
 
@@ -3837,12 +3812,11 @@ export default function App() {
                         {/* TARGET MEMBER SEARCH & ADVANCED MULTI-FILTERS */}
                         <div className="space-y-3 pb-3 border-b border-slate-800/40">
                           {/* Search Input + Filters Button */}
-                          <div>
-                            <div className="flex items-center gap-2 mb-1.5">
+                          <div className="flex items-center gap-3 mb-2">
                               <button
                                 type="button"
                                 onClick={() => setShowFiltersPanel(prev => !prev)}
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition flex items-center gap-1 cursor-pointer ${
+                                className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition flex items-center gap-1 cursor-pointer shrink-0 ${
                                   showFiltersPanel || activeFiltersCount > 0
                                     ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-[0_0_8px_rgba(20,184,166,0.3)]'
                                     : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
@@ -3856,45 +3830,44 @@ export default function App() {
                                   </span>
                                 )}
                               </button>
-                            </div>
 
-                            {/* Direct Search Bar */}
-                            <div className="relative">
-                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                              <input
-                                type="text"
-                                value={memberSearchQuery}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  setMemberSearchQuery(val);
-                                  if (val.trim()) {
-                                    const match = membersToUse.find(m => 
-                                      m.email.toLowerCase() === val.toLowerCase().trim() ||
-                                      m.userId.toLowerCase() === val.toLowerCase().trim()
-                                    );
-                                    if (match) {
-                                      setSelectedEntryUser(match.email);
+                              {/* Direct Search Bar */}
+                              <div className="relative flex-1">
+                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                <input
+                                  type="text"
+                                  value={memberSearchQuery}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setMemberSearchQuery(val);
+                                    if (val.trim()) {
+                                      const match = membersToUse.find(m =>
+                                        m.email.toLowerCase() === val.toLowerCase().trim() ||
+                                        m.userId.toLowerCase() === val.toLowerCase().trim()
+                                      );
+                                      if (match) {
+                                        setSelectedEntryUser(match.email);
+                                      }
                                     }
-                                  }
-                                }}
-                                placeholder="Direct search User ID or Gmail (e.g. CRWO-101 / raj@gmail.com)..."
-                                className={`w-full pl-8 pr-7 py-2 text-xs rounded-lg border ${
-                                  darkMode
-                                    ? 'bg-slate-900 border-slate-800 focus:border-teal-500 text-slate-200 focus:outline-none placeholder:text-slate-500'
-                                    : 'bg-white border-slate-200 focus:border-blue-500 focus:outline-none'
-                                }`}
-                              />
-                              {memberSearchQuery && (
-                                <button
-                                  type="button"
-                                  onClick={() => setMemberSearchQuery('')}
-                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-0.5"
-                                  title="Clear Search"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
+                                  }}
+                                  placeholder="Search User ID or Email..."
+                                  className={`w-full pl-8 pr-7 py-2.5 text-xs rounded-lg border ${
+                                    darkMode
+                                      ? 'bg-slate-900 border-slate-800 focus:border-teal-500 text-slate-200 focus:outline-none placeholder:text-slate-500'
+                                      : 'bg-white border-slate-200 focus:border-blue-500 focus:outline-none'
+                                  }`}
+                                />
+                                {memberSearchQuery && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setMemberSearchQuery('')}
+                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-0.5"
+                                    title="Clear Search"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
                           </div>
 
                           {/* Multi-Filters Controls Panel */}
