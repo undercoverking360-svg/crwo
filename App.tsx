@@ -2760,37 +2760,10 @@ export default function App() {
               </button>
             </div>
 
-            {/* Native Mobile Permission Banner (Hidden when granted) */}
-            {!hasNativeNotifPermission && (
-              <div className="p-3 rounded-xl border border-teal-500/30 bg-teal-500/10 flex items-center justify-between gap-3">
-                <div className="text-xs leading-tight">
-                  </div>
-                <button
-                  onClick={async () => {
-                    const granted = await requestNativeNotificationPermission();
-                    if (granted) {
-                      setHasNativeNotifPermission(true);
-                      try { localStorage.setItem('crwo_native_notif_granted', 'true'); } catch {}
-                      addNotification("Mobile notification permission granted!");
-                      sendNativePushNotification("CRWO Notifications Active", "You will now receive instant alerts on your phone screen!");
-                    } else {
-                      addNotification("Permission not granted. Enable in phone settings.");
-                    }
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-teal-500 text-slate-950 hover:bg-teal-400 transition shrink-0 cursor-pointer"
-                >
-                  Enable Access
-                </button>
-              </div>
-            )}
-
             {/* Notification History Feed */}
             <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
               {userTelemetryNotifications.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 space-y-2">
-                  <Bell className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p>No new notifications yet.</p>
-                  <p className="text-[10px] text-slate-500">Updates on your advance requests, support tickets, and community announcements will appear here.</p>
+                <div className="py-4 text-center text-xs text-slate-500">
                 </div>
               ) : (
                 userTelemetryNotifications.map((n) => (
@@ -3284,26 +3257,6 @@ export default function App() {
               <PhoneCall className="w-4 h-4" />
             </button>
 
-            {/* User Notification Bell (Desktop) */}
-            <button 
-              onClick={() => {
-                setIsUserNotificationOpen(prev => !prev);
-                requestNativeNotificationPermission().catch(console.warn);
-              }}
-              className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200 cursor-pointer relative ${
-                userTelemetryNotifications.length > 0
-                  ? 'bg-teal-500/20 border-teal-500/50 text-teal-300 shadow-[0_0_10px_rgba(20,184,166,0.3)]'
-                  : darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-              }`}
-              title="User Notifications & Telemetry"
-            >
-              <Bell className="w-4 h-4 text-teal-400" />
-              {userTelemetryNotifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 text-slate-950 font-black text-[9px] flex items-center justify-center animate-pulse">
-                  {userTelemetryNotifications.length}
-                </span>
-              )}
-            </button>
 
             {/* Dark Mode Toggle */}
             <button 
