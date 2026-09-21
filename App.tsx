@@ -3015,8 +3015,8 @@ export default function App() {
       {/* DASHBOARD LAYOUT */}
       <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* MOBILE NAVIGATION BAR (horizontal scrollable) */}
-        <div className="lg:hidden w-full overflow-x-auto flex gap-2 pb-3 mb-5 shrink-0 select-none">
+        {/* MOBILE NAVIGATION BAR (horizontal scrollable, centered if admin app / single tab) */}
+        <div className={`lg:hidden w-full overflow-x-auto flex ${isNativeAdminApp || navItems.length === 1 ? 'justify-center' : ''} gap-2 pb-3 mb-5 shrink-0 select-none`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
@@ -3186,17 +3186,17 @@ export default function App() {
                   </div>
                 ) : (
                   <div>
-                    <div className="flex items-center justify-between border-b pb-4 mb-6 border-slate-800/80">
-                      <div>
-                        <h2 className="text-xl font-bold flex items-center gap-2 font-orbitron uppercase tracking-wider">
-                          <ShieldAlert className="w-5 h-5 text-rose-500" />
-                          Admin Terminal
+                    <div className="flex flex-col sm:flex-row items-center justify-between border-b pb-4 mb-6 border-slate-800/80 gap-3 text-center sm:text-left">
+                      <div className="flex flex-col items-center sm:items-start">
+                        <h2 className="text-xl font-bold flex items-center justify-center sm:justify-start gap-2 font-orbitron uppercase tracking-wider">
+                          <ShieldAlert className="w-5 h-5 text-rose-500 shrink-0" />
+                          <span>Admin Terminal</span>
                         </h2>
-                        <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`text-xs mt-1 text-center sm:text-left ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                           System parameters control panel and member logs.
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
                         <button 
                           onClick={() => {
                             setAdminAuthenticated(false);
@@ -3204,7 +3204,7 @@ export default function App() {
                             setAdminPass('');
                             addNotification('Admin Terminal locked.');
                           }} 
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
+                          className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg border transition text-center cursor-pointer ${
                             darkMode ? 'border-rose-500/30 hover:bg-rose-500/10 text-rose-400' : 'border-rose-200 hover:bg-rose-50 text-rose-600'
                           }`}
                         >
@@ -3220,7 +3220,7 @@ export default function App() {
                             }
                             addNotification('Admin Terminal synced with secure database.');
                           }} 
-                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
+                          className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg border transition text-center cursor-pointer ${
                             darkMode ? 'border-slate-800 hover:bg-slate-900 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                           }`}
                         >
@@ -3276,79 +3276,81 @@ export default function App() {
                           Switch between operational modules to enter records, issue cheques, or resolve member tickets.
                         </p>
                       </div>
-                      <div className="flex flex-wrap items-center bg-slate-900 p-1.5 rounded-xl border border-slate-800 gap-1 md:gap-1.5 shrink-0 overflow-x-auto">
-                        <button
-                          onClick={() => setAdminFormTab('entry')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'entry' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Ledger
-                        </button>
-                        <button
-                          onClick={() => setAdminFormTab('bank')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'bank' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Bank Profile
-                        </button>
-                        <button
-                          onClick={() => setAdminFormTab('cheque')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'cheque' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Cheque Sheet
-                        </button>
-                        <button
-                          onClick={() => setAdminFormTab('advance')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'advance' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Advance
-                        </button>
-                        <button
-                          onClick={() => setAdminFormTab('complain')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'complain' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Complain
-                        </button>
-                        <button
-                          onClick={() => setAdminFormTab('referral')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'referral' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Referral
-                        </button>
-                        <button
-                          onClick={() => setAdminFormTab('kyc')}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'kyc' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          KYC
-                        </button>
-                        <button
-                          onClick={() => { setAdminFormTab('courier'); fetchAdminCouriers(); }}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'courier' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
-                          }`}
-                        >
-                          Courier
-                        </button>
-                        <button
-                          onClick={() => { setAdminFormTab('security' as any); fetchSecurityData(); }}
-                          className={`px-3.5 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center whitespace-nowrap ${
-                            adminFormTab === 'security' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-rose-400 hover:text-rose-300'
-                          }`}
-                        >
-                          🛡 Security
-                        </button>
+                      <div className="w-full lg:w-auto bg-slate-900 p-2 rounded-xl border border-slate-800 shrink-0">
+                        <div className="grid grid-cols-3 md:flex md:flex-wrap items-center justify-center gap-1.5 w-full">
+                          <button
+                            onClick={() => setAdminFormTab('entry')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'entry' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Ledger
+                          </button>
+                          <button
+                            onClick={() => setAdminFormTab('bank')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'bank' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Bank Profile
+                          </button>
+                          <button
+                            onClick={() => setAdminFormTab('cheque')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'cheque' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Cheque Sheet
+                          </button>
+                          <button
+                            onClick={() => setAdminFormTab('advance')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'advance' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Advance
+                          </button>
+                          <button
+                            onClick={() => setAdminFormTab('complain')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'complain' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Complain
+                          </button>
+                          <button
+                            onClick={() => setAdminFormTab('referral')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'referral' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Referral
+                          </button>
+                          <button
+                            onClick={() => setAdminFormTab('kyc')}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'kyc' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            KYC
+                          </button>
+                          <button
+                            onClick={() => { setAdminFormTab('courier'); fetchAdminCouriers(); }}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'courier' ? 'bg-teal-500 text-slate-950 shadow-lg shadow-teal-500/20' : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            Courier
+                          </button>
+                          <button
+                            onClick={() => { setAdminFormTab('security' as any); fetchSecurityData(); }}
+                            className={`w-full md:w-auto h-9 px-2.5 flex items-center justify-center text-[10px] sm:text-xs uppercase tracking-wider font-bold rounded-lg transition cursor-pointer text-center ${
+                              adminFormTab === 'security' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-rose-400 hover:text-rose-300'
+                            }`}
+                          >
+                            🛡 Security
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -3374,7 +3376,7 @@ export default function App() {
                             <select
                               value={selectedEntryUser}
                               onChange={(e) => setSelectedEntryUser(e.target.value)}
-                              className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none' : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 focus:outline-none'}`}
+                              className={`w-full px-3 py-2 text-[11px] sm:text-xs truncate rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none' : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 focus:outline-none'}`}
                             >
                               {registeredUsers.map(email => (
                                 <option key={email} value={email}>{email}</option>
@@ -4759,17 +4761,17 @@ export default function App() {
                                           isInactive ? 'bg-rose-500/25' : 'bg-emerald-500/20'
                                         }`}></span>
 
-                                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800/20 pb-3 mb-3 relative z-10">
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-[10px] px-2 py-0.5 rounded bg-slate-950/60 text-teal-400 font-bold font-mono border border-slate-800">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-slate-800/20 pb-3 mb-3 relative z-10">
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className="text-[10px] px-2 py-0.5 rounded bg-slate-950/60 text-teal-400 font-bold font-mono border border-slate-800 shrink-0">
                                               ACC #{bank.slNo}
                                             </span>
-                                            <span className="text-xs font-bold text-slate-100">{bank.bankName}</span>
-                                            <span className="text-[10px] text-slate-400 font-medium">({bank.nameOfHolder})</span>
+                                            <span className="text-xs font-bold text-slate-100 break-words">{bank.bankName}</span>
+                                            <span className="text-[10px] text-slate-400 font-medium break-words">({bank.nameOfHolder})</span>
                                           </div>
 
                                            {/* STATUS DROPDOWN SELECTOR, BADGE & EDIT BUTTON */}
-                                           <div className="flex items-center gap-2">
+                                           <div className="flex items-center gap-2 flex-wrap min-w-0 max-w-full">
                                              <button
                                                type="button"
                                                onClick={() => {
@@ -4792,25 +4794,25 @@ export default function App() {
                                                  setBankAccountStatus(bank.accountStatus || 'ACTIVE');
                                                  addNotification(`Loaded Bank Account #${bank.slNo} into editor.`);
                                                }}
-                                               className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 border border-teal-500/40 transition flex items-center gap-1 cursor-pointer"
+                                               className="text-[9px] font-bold px-2.5 py-1 rounded-full bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 border border-teal-500/40 transition flex items-center gap-1 cursor-pointer shrink-0"
                                              >
                                                <Pencil className="w-2.5 h-2.5" />
                                                Edit Profile
                                              </button>
 
-                                             <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400">Status:</span>
+                                             <span className="text-[9px] uppercase tracking-wider font-bold text-slate-400 shrink-0">Status:</span>
                                              <select
                                                value={bank.accountStatus || 'ACTIVE'}
                                                onChange={(e) => handleUpdateBankStatus(bank.slNo, e.target.value as 'ACTIVE' | 'INACTIVE')}
                                                disabled={updatingBankSlNo === bank.slNo}
-                                               className={`text-[10px] font-bold px-2.5 py-1 rounded-full border outline-none cursor-pointer transition-all shadow-md ${
+                                               className={`text-[10px] font-bold px-2.5 py-1 rounded-full border outline-none cursor-pointer transition-all shadow-md shrink-0 max-w-full ${
                                                  isInactive
                                                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-rose-500/20 animate-pulse'
                                                    : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-emerald-500/20'
                                                }`}
                                              >
-                                               <option value="ACTIVE" className="bg-slate-900 text-emerald-400 font-bold">● ACTIVE (Glassy Green)</option>
-                                               <option value="INACTIVE" className="bg-slate-900 text-rose-400 font-bold">● INACTIVE (Glassy Red)</option>
+                                               <option value="ACTIVE" className="bg-slate-900 text-emerald-400 font-bold">● ACTIVE</option>
+                                               <option value="INACTIVE" className="bg-slate-900 text-rose-400 font-bold">● INACTIVE</option>
                                              </select>
                                            </div>
                                         </div>
@@ -5158,15 +5160,15 @@ export default function App() {
                                 ) : (
                                   <div className="space-y-3">
                                     {(Array.isArray(adminCourierList) ? adminCourierList : []).map((item, i) => (
-                                      <div key={i} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-2`}>
-                                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 border-b border-slate-800/40 pb-2">
-                                          <div className="flex items-center gap-2">
-                                            <span className="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 font-mono text-[10px] font-black">
+                                      <div key={i} className={`p-4 rounded-xl border overflow-hidden ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'} space-y-2`}>
+                                        <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-2 border-b border-slate-800/40 pb-2">
+                                          <div className="flex items-center gap-2 min-w-0 flex-1 flex-wrap">
+                                            <span className="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 font-mono text-[10px] font-black shrink-0">
                                               {item.batchNo}
                                             </span>
-                                            <span className="text-xs font-bold text-slate-200">{item.email}</span>
+                                            <span className="text-xs font-bold text-slate-200 break-all min-w-0">{item.email}</span>
                                           </div>
-                                          <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
+                                          <span className={`self-start sm:self-auto px-2 py-0.5 rounded text-[9px] font-black uppercase border shrink-0 ${
                                             item.batchReceivedStatus === 'RECEIVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : item.batchReceivedStatus === 'REJECTED' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
                                           }`}>
                                             {item.batchReceivedStatus || 'PENDING'}
@@ -5236,28 +5238,28 @@ export default function App() {
                                       }
 
                                       return multiAccDevices.map(([uuid, group]) => (
-                                        <div key={uuid} className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 space-y-3">
-                                          <div className="flex items-center justify-between">
+                                        <div key={uuid} className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 space-y-3 overflow-hidden">
+                                          <div className="flex items-center justify-between flex-wrap gap-2">
                                             <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
                                               <span>⚠️ MULTI-ACCOUNT THREAT DETECTED</span>
                                             </div>
-                                            <div className="text-[10px] font-mono text-slate-500">ID: {uuid}</div>
+                                            <div className="text-[10px] font-mono text-slate-500 truncate max-w-[160px] sm:max-w-none">ID: {uuid}</div>
                                           </div>
                                           
-                                          <div className="text-xs text-slate-300">
-                                            Device UUID <code className="bg-slate-900 px-1 py-0.5 rounded font-mono text-teal-400">{uuid}</code> is shared by <span className="font-bold text-white text-sm">{group.emails.size}</span> registered email profiles:
+                                          <div className="text-xs text-slate-300 break-words">
+                                            Device UUID <code className="bg-slate-900 px-1 py-0.5 rounded font-mono text-teal-400 break-all">{uuid}</code> is shared by <span className="font-bold text-white text-sm">{group.emails.size}</span> registered email profiles:
                                           </div>
 
                                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-3 border-l-2 border-rose-500/30">
                                             {Array.from(group.emails).map(email => (
-                                              <div key={email} className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 font-mono">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
-                                                {email}
+                                              <div key={email} className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 font-mono break-all min-w-0">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0"></span>
+                                                <span>{email}</span>
                                               </div>
                                             ))}
                                           </div>
 
-                                          <div className="text-[10px] text-slate-400 font-mono">
+                                          <div className="text-[10px] text-slate-400 font-mono break-all">
                                             IP Addresses Used: {Array.from(group.ips).join(', ') || 'Unknown'}
                                           </div>
 
@@ -5338,18 +5340,18 @@ export default function App() {
                                     </div>
                                   ) : (
                                     securityBlacklist.map((item) => (
-                                      <div key={item.id} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${darkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="space-y-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                      <div key={item.id} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden ${darkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                                        <div className="space-y-1 w-full min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
                                               item.type === 'email' ? 'bg-blue-500/20 text-blue-400' : item.type === 'ip' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'
                                             }`}>
                                               {item.type}
                                             </span>
-                                            <span className="text-xs font-bold font-mono text-white">{item.value}</span>
+                                            <span className="text-xs font-bold font-mono text-white break-all min-w-0">{item.value}</span>
                                           </div>
-                                          <div className="text-[10px] text-slate-400">
-                                            Reason: <span className="italic">{item.reason}</span>
+                                          <div className="text-[10px] text-slate-400 break-words">
+                                            Reason: <span className="italic break-all">{item.reason}</span>
                                           </div>
                                           <div className="text-[9px] text-slate-500">
                                             Banned on: {new Date(item.created_at || item.createdAt || Date.now()).toLocaleString()}
@@ -5372,7 +5374,7 @@ export default function App() {
                                               console.error(e);
                                             }
                                           }}
-                                          className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition cursor-pointer"
+                                          className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition cursor-pointer shrink-0 self-start sm:self-auto"
                                         >
                                           Unblock
                                         </button>
