@@ -354,6 +354,18 @@ export default function App() {
     }
   });
   const [isUserNotificationOpen, setIsUserNotificationOpen] = useState(false);
+  const [hasNativeNotifPermission, setHasNativeNotifPermission] = useState<boolean>(() => {
+    try { return localStorage.getItem('crwo_native_notif_granted') === 'true'; } catch { return false; }
+  });
+
+  useEffect(() => {
+    checkNotificationPermission().then(granted => {
+      if (granted) {
+        setHasNativeNotifPermission(true);
+        try { localStorage.setItem('crwo_native_notif_granted', 'true'); } catch {}
+      }
+    });
+  }, [isUserNotificationOpen]);
 
   const [selectedEntryUser, setSelectedEntryUser] = useState('');
   const [entryAccountName, setEntryAccountName] = useState('');
@@ -2762,27 +2774,31 @@ export default function App() {
               </button>
             </div>
 
-            {/* Native Mobile Permission Banner */}
-            <div className="p-3 rounded-xl border border-teal-500/30 bg-teal-500/10 flex items-center justify-between gap-3">
-              <div className="text-xs leading-tight">
-                <p className="font-bold text-teal-300">Mobile Screen Push Alerts</p>
-                <p className="text-[10px] text-slate-400 mt-0.5">Receive alerts on lock screen when query is resolved</p>
+            {/* Native Mobile Permission Banner (Hidden when granted) */}
+            {!hasNativeNotifPermission && (
+              <div className="p-3 rounded-xl border border-teal-500/30 bg-teal-500/10 flex items-center justify-between gap-3">
+                <div className="text-xs leading-tight">
+                  <p className="font-bold text-teal-300">Mobile Screen Push Alerts</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Receive alerts on lock screen when query is resolved</p>
+                </div>
+                <button
+                  onClick={async () => {
+                    const granted = await requestNativeNotificationPermission();
+                    if (granted) {
+                      setHasNativeNotifPermission(true);
+                      try { localStorage.setItem('crwo_native_notif_granted', 'true'); } catch {}
+                      addNotification("Mobile notification permission granted!");
+                      sendNativePushNotification("CRWO Notifications Active", "You will now receive instant alerts on your phone screen!");
+                    } else {
+                      addNotification("Permission not granted. Enable in phone settings.");
+                    }
+                  }}
+                  className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-teal-500 text-slate-950 hover:bg-teal-400 transition shrink-0 cursor-pointer"
+                >
+                  Enable Access
+                </button>
               </div>
-              <button
-                onClick={async () => {
-                  const granted = await requestNativeNotificationPermission();
-                  if (granted) {
-                    addNotification("Mobile notification permission granted!");
-                    sendNativePushNotification("CRWO Notifications Active", "You will now receive instant alerts on your phone screen!");
-                  } else {
-                    addNotification("Permission not granted. Enable in phone settings.");
-                  }
-                }}
-                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-teal-500 text-slate-950 hover:bg-teal-400 transition shrink-0 cursor-pointer"
-              >
-                Enable Access
-              </button>
-            </div>
+            )}
 
             {/* Notification History Feed */}
             <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
@@ -3489,7 +3505,7 @@ export default function App() {
                   <div className="max-w-md mx-auto py-8">
                     <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="text-center mb-6">
-                        <CrwoLogo className="w-48 h-48 mx-auto mb-4" />
+                        <CrwoLogo className="w-20 h-20 mx-auto mb-3" />
                         <h2 className="text-base font-bold uppercase tracking-wider font-orbitron">Admin Login Gate</h2>
                         <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                           Secure Panel • CRWO personnel only.
@@ -3587,67 +3603,77 @@ export default function App() {
                             )}
                           </button>
 
-                          {/* Telemetry Dropdown Panel */}
+                          {/* Telemetry Modal Dialog */}
                           {isAdminNotificationOpen && (
-                            <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-slate-800 bg-slate-950/95 backdrop-blur-xl shadow-2xl z-50 p-3.5 space-y-3 font-sans">
-                              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-                                  <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-amber-400">
-                                    PENDING REQUESTS ({adminPendingRequests.length})
-                                  </span>
-                                </div>
-                                <button
-                                  onClick={() => fetchAdminPendingRequests()}
-                                  className="text-[10px] text-teal-400 hover:text-teal-300 underline font-semibold cursor-pointer"
-                                >
-                                  {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
-                                </button>
-                              </div>
-
-                              <div className="max-h-72 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                {adminPendingRequests.length === 0 ? (
-                                  <div className="py-6 text-center text-xs text-slate-400">
-                                    <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
-                                    No pending user queries! All requests are resolved.
+                            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                              <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950/98 backdrop-blur-xl shadow-2xl p-4 space-y-3 font-sans max-h-[85vh] flex flex-col">
+                                <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                                    <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-amber-400">
+                                      PENDING REQUESTS ({adminPendingRequests.length})
+                                    </span>
                                   </div>
-                                ) : (
-                                  adminPendingRequests.map((req) => (
-                                    <div
-                                      key={req.id}
-                                      onClick={() => {
-                                        setAdminFormTab(req.moduleTab || 'entry');
-                                        setSelectedEntryUser(req.email);
-                                        setIsAdminNotificationOpen(false);
-                                        addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
-                                      }}
-                                      className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/80 hover:border-amber-500/50 hover:bg-slate-850/90 transition cursor-pointer text-left space-y-1 group"
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => fetchAdminPendingRequests()}
+                                      className="text-[10px] text-teal-400 hover:text-teal-300 font-semibold cursor-pointer px-2 py-1 rounded bg-slate-900 border border-slate-800"
                                     >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-teal-400">
-                                          {req.userId || 'MEMBER'}
-                                        </span>
-                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 text-amber-300">
-                                          ● PENDING
-                                        </span>
-                                      </div>
-                                      <div className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">
-                                        {req.title}
-                                      </div>
-                                      <div className="text-[11px] text-slate-400 break-all line-clamp-2">
-                                        {req.details || req.email}
-                                      </div>
-                                      <div className="text-[9px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/50">
-                                        <span className="truncate">{req.email}</span>
-                                        <span className="text-teal-400 font-semibold shrink-0">Touch to Resolve →</span>
-                                      </div>
-                                    </div>
-                                  ))
-                                )}
-                              </div>
+                                      {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
+                                    </button>
+                                    <button
+                                      onClick={() => setIsAdminNotificationOpen(false)}
+                                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
+                                    >
+                                      <X className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
 
-                              <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/60">
-                                Touch any request to auto-select user & jump to module.
+                                <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar flex-1 max-h-[60vh]">
+                                  {adminPendingRequests.length === 0 ? (
+                                    <div className="py-8 text-center text-xs text-slate-400">
+                                      <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
+                                      No pending user queries! All requests are resolved.
+                                    </div>
+                                  ) : (
+                                    adminPendingRequests.map((req) => (
+                                      <div
+                                        key={req.id}
+                                        onClick={() => {
+                                          setAdminFormTab(req.moduleTab || 'entry');
+                                          setSelectedEntryUser(req.email);
+                                          setIsAdminNotificationOpen(false);
+                                          addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
+                                        }}
+                                        className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/80 hover:border-amber-500/50 hover:bg-slate-850/90 transition cursor-pointer text-left space-y-1 group"
+                                      >
+                                        <div className="flex items-center justify-between gap-2">
+                                          <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-teal-400">
+                                            {req.userId || 'MEMBER'}
+                                          </span>
+                                          <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                                            ● PENDING
+                                          </span>
+                                        </div>
+                                        <div className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">
+                                          {req.title}
+                                        </div>
+                                        <div className="text-[11px] text-slate-400 break-all line-clamp-2">
+                                          {req.details || req.email}
+                                        </div>
+                                        <div className="text-[9px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/50">
+                                          <span className="truncate">{req.email}</span>
+                                          <span className="text-teal-400 font-semibold shrink-0">Touch to Resolve →</span>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+
+                                <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/60">
+                                  Touch any request to auto-select user & jump to module.
+                                </div>
                               </div>
                             </div>
                           )}
@@ -3826,10 +3852,7 @@ export default function App() {
                         <div className="space-y-3 pb-3 border-b border-slate-800/40">
                           {/* Search Input + Filters Button */}
                           <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                              <label className="block text-[10px] font-bold uppercase tracking-wider text-teal-400 font-orbitron">
-                                Member Search & Filters
-                              </label>
+                            <div className="flex items-center gap-2 mb-1.5">
                               <button
                                 type="button"
                                 onClick={() => setShowFiltersPanel(prev => !prev)}
@@ -3840,7 +3863,7 @@ export default function App() {
                                 }`}
                               >
                                 <SlidersHorizontal className="w-3 h-3 text-teal-400" />
-                                <span>Filter by Designation / State</span>
+                                <span>Filters</span>
                                 {activeFiltersCount > 0 && (
                                   <span className="w-3.5 h-3.5 rounded-full bg-teal-400 text-slate-950 text-[8px] font-black flex items-center justify-center">
                                     {activeFiltersCount}
@@ -8351,7 +8374,7 @@ export default function App() {
                       onLoginClick={() => { setLoginTab('login'); setLoginOpen(true); }}
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-6 w-full space-y-6">
+                    <div className="flex flex-col items-center justify-center py-2 w-full space-y-4">
                       <style>{`
                         @keyframes colorGlow {
                           0% { text-shadow: 0 0 10px rgba(45,212,191,0.85); color: #2dd4bf; }
@@ -8741,7 +8764,7 @@ export default function App() {
                       <div className="w-full max-w-md p-6 rounded-2xl border-2 border-teal-500/20 backdrop-blur-xl relative overflow-hidden bg-slate-900/60 shadow-2xl">
                         <div className="absolute -top-12 -left-12 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
                         <div className="text-center mb-6">
-                          <CrwoLogo className="w-48 h-48 mx-auto mb-4" />
+                          <CrwoLogo className="w-20 h-20 mx-auto mb-3" />
                           <h2 className="text-base font-bold uppercase tracking-widest font-orbitron text-teal-455">Portal Decryption Gate</h2>
                           <p className="text-xs mt-1 text-slate-400">
                             Secure Encrypted Terminal • Authorization Access Key required.
