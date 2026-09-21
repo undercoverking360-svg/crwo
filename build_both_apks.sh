@@ -19,6 +19,8 @@ npm run build
 echo "=== Syncing Assets to dist-admin and dist-user ==="
 cp -r dist/assets dist-admin/
 cp -r dist/assets dist-user/
+cat dist/index.html | sed 's|<head>|<head><script>window.__CRWO_APP_ROLE__="admin";</script>|' > dist-admin/index.html
+cat dist/index.html | sed 's|<head>|<head><script>window.__CRWO_APP_ROLE__="user";</script>|' > dist-user/index.html
 
 echo "=== 1. Building Signed CRWO Admin Release APK ==="
 cat << 'CONFIG' > capacitor.config.json
