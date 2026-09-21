@@ -3491,7 +3491,7 @@ export default function App() {
                   <div className="max-w-md mx-auto py-8">
                     <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="text-center mb-6">
-                        <CrwoLogo className="w-20 h-20 mx-auto mb-3" />
+                        <CrwoLogo className="w-48 h-48 mx-auto mb-4" />
                         <h2 className="text-base font-bold uppercase tracking-wider font-orbitron">Admin Login Gate</h2>
                         <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                           Secure Panel • CRWO personnel only.
@@ -8360,7 +8360,7 @@ export default function App() {
                       onLoginClick={() => { setLoginTab('login'); setLoginOpen(true); }}
                     />
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-2 w-full space-y-4">
+                    <div className="flex flex-col items-center justify-center py-6 w-full space-y-6">
                       <style>{`
                         @keyframes colorGlow {
                           0% { text-shadow: 0 0 10px rgba(45,212,191,0.85); color: #2dd4bf; }
@@ -8750,7 +8750,7 @@ export default function App() {
                       <div className="w-full max-w-md p-6 rounded-2xl border-2 border-teal-500/20 backdrop-blur-xl relative overflow-hidden bg-slate-900/60 shadow-2xl">
                         <div className="absolute -top-12 -left-12 w-32 h-32 bg-teal-500/10 rounded-full blur-2xl pointer-events-none"></div>
                         <div className="text-center mb-6">
-                          <CrwoLogo className="w-20 h-20 mx-auto mb-3" />
+                          <CrwoLogo className="w-48 h-48 mx-auto mb-4" />
                           <h2 className="text-base font-bold uppercase tracking-widest font-orbitron text-teal-455">Portal Decryption Gate</h2>
                           <p className="text-xs mt-1 text-slate-400">
                             Secure Encrypted Terminal • Authorization Access Key required.
