@@ -52,7 +52,7 @@ import { WaveBackground } from './WaveBackground';
 import { AnonymousLogo } from './AnonymousLogo';
 import { callSupabase } from './supabase';
 import { requestNativeNotificationPermission, sendNativePushNotification, checkNotificationPermission } from './notificationService';
-import { CRWOLoader } from './CRWOLoader';
+
 
 // Configuration for the Discord Server Invite Link (Opens in new tab to prevent iframe blocking)
 const DISCORD_INVITE_URL = "https://discord.gg/KQbGpWSux3";
@@ -172,15 +172,6 @@ export default function App() {
   const isNativeUserApp = typeof window !== 'undefined' && (window as any).__CRWO_APP_ROLE__ === 'user';
   const isNativeAdminApp = typeof window !== 'undefined' && (window as any).__CRWO_APP_ROLE__ === 'admin';
 
-  // Initial Native Boot Animation state
-  const [isBooting, setIsBooting] = useState(true);
-
-  useEffect(() => {
-    const bootTimer = setTimeout(() => {
-      setIsBooting(false);
-    }, 1100);
-    return () => clearTimeout(bootTimer);
-  }, []);
 
   // Theme state
   const [darkMode, setDarkMode] = useState(true);
@@ -2711,11 +2702,6 @@ export default function App() {
   return (
     <div className={`min-h-screen font-sans ${darkMode ? 'crypto-bg-dark text-slate-100' : 'crypto-bg-light text-slate-800'} transition-colors duration-300 relative overflow-x-hidden`}>
       <WaveBackground darkMode={darkMode} />
-
-      {/* HIGH-TECH CRWO PULSE DOT PRELOADER */}
-      {isBooting && (
-        <CRWOLoader statusText="INITIALIZING SECURE CRWO PROTOCOLS..." isFullScreen={true} />
-      )}
 
       {/* BLOCKED DEVICE SCREEN */}
       {isBlocked && (
