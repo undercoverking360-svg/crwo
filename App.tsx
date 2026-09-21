@@ -3484,7 +3484,7 @@ export default function App() {
 
           {/* MAIN CONTENT AREA */}
           <main className="lg:col-span-3">
-            <div className={`rounded-2xl border p-6 min-h-[500px] ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
+            <div className={`rounded-2xl border p-6 ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
                             {/* ADMIN VIEW */}
               {activeTab === 'admin' && (
                 !adminAuthenticated ? (
