@@ -6,3 +6,4 @@ android/
 generated-icons/
 capacitor.config.json
 package-lock.json
+apks/

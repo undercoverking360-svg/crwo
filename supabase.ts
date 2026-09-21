@@ -58,13 +58,111 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
     else if (action === "getUserList") {
       const { data: users, error } = await supabase
         .from('users')
-        .select('email');
+        .select('email, user_id, name, joined_date');
 
       if (error) throw error;
+
+      // Also join id_cards to get designation, state, district
+      const { data: idCards } = await supabase
+        .from('id_cards')
+        .select('email, designation, state, district, city, joining_date');
+
+      const idCardMap = new Map<string, any>();
+      if (idCards) {
+        idCards.forEach((ic: any) => {
+          if (ic.email) idCardMap.set(safeLower(ic.email), ic);
+        });
+      }
+
+      const richMembers = (users || []).map((u: any) => {
+        const email = safeStr(u.email);
+        const card = idCardMap.get(safeLower(email)) || {};
+        return {
+          email,
+          userId: safeStr(u.user_id) || 'CRWO-MEM',
+          name: safeStr(u.name) || 'Member',
+          joinedDate: safeStr(u.joined_date) || safeStr(card.joining_date) || '2026-01-01',
+          designation: safeStr(card.designation) || 'HOLDER',
+          state: safeStr(card.state) || 'N/A',
+          district: safeStr(card.district) || safeStr(card.city) || 'N/A'
+        };
+      }).filter(m => Boolean(m.email));
+
       return {
         success: true,
-        data: (users || []).map(u => u.email).filter(Boolean)
+        data: richMembers.map(m => m.email),
+        members: richMembers
       };
+    }
+
+    else if (action === "getPendingRequests") {
+      try {
+        const [advRes, compRes, refRes] = await Promise.all([
+          supabase.from('advances').select('*').ilike('claim_status', '%pending%'),
+          supabase.from('complaints').select('*').in('status', ['PENDING', 'OPEN', 'pending', 'open']),
+          supabase.from('referrals').select('*').ilike('claim_status', '%pending%')
+        ]);
+
+        const list: any[] = [];
+        if (advRes.data) {
+          advRes.data.forEach((a: any) => {
+            list.push({
+              id: `adv-${a.id || a.sl_no}`,
+              type: 'advance',
+              title: 'Advance Claim Request',
+              email: safeStr(a.email),
+              userId: safeStr(a.od_user_id) || 'USER',
+              date: safeStr(a.date),
+              time: safeStr(a.time),
+              amount: safeStr(a.requested_amount),
+              details: `Bank: ${safeStr(a.bank_name)} • Amount: ₹${safeStr(a.requested_amount)} • Reason: ${safeStr(a.purpose)}`,
+              status: 'PENDING',
+              moduleTab: 'advance'
+            });
+          });
+        }
+        if (compRes.data) {
+          compRes.data.forEach((c: any) => {
+            list.push({
+              id: `comp-${c.id || c.sl_no || c.ticket_id}`,
+              type: 'complain',
+              title: `Support Ticket: ${safeStr(c.subject || 'Ticket')}`,
+              email: safeStr(c.email),
+              userId: safeStr(c.od_user_id) || 'USER',
+              date: safeStr(c.date),
+              time: safeStr(c.time),
+              amount: '',
+              details: `Subject: ${safeStr(c.subject)} • ${safeStr(c.description)}`,
+              status: 'PENDING',
+              moduleTab: 'complain'
+            });
+          });
+        }
+        if (refRes.data) {
+          refRes.data.forEach((r: any) => {
+            list.push({
+              id: `ref-${r.id || r.sl_no}`,
+              type: 'referral',
+              title: 'Referral Bonus Claim',
+              email: safeStr(r.email),
+              userId: safeStr(r.user_id) || 'USER',
+              date: safeStr(r.date),
+              time: safeStr(r.time),
+              amount: '',
+              details: `Referral: ${safeStr(r.referral_name)} • Tier: ${safeStr(r.referral_tier)}`,
+              status: 'PENDING',
+              moduleTab: 'referral'
+            });
+          });
+        }
+        return {
+          success: true,
+          data: list
+        };
+      } catch (e) {
+        console.error("Error fetching pending requests:", e);
+        return { success: true, data: [] };
+      }
     }
 
     else if (action === "getLedger") {

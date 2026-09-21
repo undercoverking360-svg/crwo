@@ -40,13 +40,18 @@ import {
   Package,
   Truck,
   Printer,
-  Lock
+  Lock,
+  Bell,
+  Filter,
+  X,
+  SlidersHorizontal
 } from 'lucide-react';
 
 import { verifyAdminWithFirebase, verifyTrafficPasscodeWithFirebase, verifySearchPasscodeWithFirebase } from './firebase';
 import { WaveBackground } from './WaveBackground';
 import { AnonymousLogo } from './AnonymousLogo';
 import { callSupabase } from './supabase';
+import { requestNativeNotificationPermission, sendNativePushNotification, checkNotificationPermission } from './notificationService';
 
 // Configuration for the Discord Server Invite Link (Opens in new tab to prevent iframe blocking)
 const DISCORD_INVITE_URL = "https://discord.gg/KQbGpWSux3";
@@ -307,6 +312,38 @@ export default function App() {
 
   // Admin entry form states
   const [registeredUsers, setRegisteredUsers] = useState<string[]>([]);
+  const [registeredMembers, setRegisteredMembers] = useState<{
+    email: string;
+    userId: string;
+    name: string;
+    designation: string;
+    state: string;
+    district: string;
+    joinedDate: string;
+  }[]>([]);
+  const [memberSearchQuery, setMemberSearchQuery] = useState('');
+  const [filterDesignation, setFilterDesignation] = useState('ALL');
+  const [filterState, setFilterState] = useState('ALL');
+  const [filterDistrict, setFilterDistrict] = useState('ALL');
+  const [filterJoiningSort, setFilterJoiningSort] = useState<'NONE' | 'NEWEST' | 'OLDEST'>('NONE');
+  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
+
+  // Admin Notification Telemetry State
+  const [adminPendingRequests, setAdminPendingRequests] = useState<any[]>([]);
+  const [isAdminNotificationOpen, setIsAdminNotificationOpen] = useState(false);
+  const [isRefreshingPending, setIsRefreshingPending] = useState(false);
+
+  // User Notification Telemetry State
+  const [userTelemetryNotifications, setUserTelemetryNotifications] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('crwo_user_telemetry');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isUserNotificationOpen, setIsUserNotificationOpen] = useState(false);
+
   const [selectedEntryUser, setSelectedEntryUser] = useState('');
   const [entryAccountName, setEntryAccountName] = useState('');
   const [entryTurnover, setEntryTurnover] = useState('');
@@ -478,16 +515,48 @@ export default function App() {
         }
 
         const activeUsers = res.data.filter((email: string) => email && !blockedEmails.has(email.toLowerCase()));
-
         setRegisteredUsers(activeUsers);
+
+        if (res.members && Array.isArray(res.members)) {
+          const activeMembers = res.members.filter((m: any) => m && m.email && !blockedEmails.has(m.email.toLowerCase()));
+          setRegisteredMembers(activeMembers);
+        } else {
+          const fallbackMembers = activeUsers.map((email: string, idx: number) => ({
+            email,
+            userId: `CRWO-MEM-${String(idx + 1).padStart(3, '0')}`,
+            name: email.split('@')[0],
+            designation: 'HOLDER',
+            state: 'N/A',
+            district: 'N/A',
+            joinedDate: '2026-01-01'
+          }));
+          setRegisteredMembers(fallbackMembers);
+        }
+
         if (activeUsers.length > 0) {
-          setSelectedEntryUser(activeUsers[0]);
+          if (!selectedEntryUser || !activeUsers.includes(selectedEntryUser)) {
+            setSelectedEntryUser(activeUsers[0]);
+          }
         } else {
           setSelectedEntryUser('');
         }
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchAdminPendingRequests = async () => {
+    setIsRefreshingPending(true);
+    try {
+      const res = await callApi({ action: 'getPendingRequests' });
+      if (res && res.success && Array.isArray(res.data)) {
+        setAdminPendingRequests(res.data);
+      }
+    } catch (e) {
+      console.error("fetchAdminPendingRequests error:", e);
+    } finally {
+      setIsRefreshingPending(false);
     }
   };
 
@@ -858,6 +927,24 @@ export default function App() {
       });
       if (res.success) {
         addNotification("Guide Video logged successfully!");
+        sendNativePushNotification(
+          "CRWO Guide & Tutorial Alert",
+          `New Guide Video: "${adminVideoTitle.trim()}" posted by Admin!`
+        );
+        try {
+          const newNotif = {
+            id: `notif-guide-${Date.now()}`,
+            title: 'New Guide Video Added',
+            message: `Admin added a new tutorial: "${adminVideoTitle.trim()}".`,
+            type: 'guide',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'INFO'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
         setAdminVideoTitle('');
         setAdminVideoLink('');
         setAdminVideoDesc('');
@@ -929,6 +1016,24 @@ export default function App() {
       try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(updated)); } catch (e) {}
 
       addNotification("Community Platform Link added successfully!");
+      sendNativePushNotification(
+        "CRWO Community & Channel Alert",
+        `New Community Link: "${commTitle.trim()}" posted by Admin!`
+      );
+      try {
+        const newNotif = {
+          id: `notif-comm-${Date.now()}`,
+          title: 'New Community Channel Added',
+          message: `Admin posted a new official channel: "${commTitle.trim()}".`,
+          type: 'community',
+          timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'INFO'
+        };
+        const saved = localStorage.getItem('crwo_user_telemetry');
+        const list = saved ? JSON.parse(saved) : [];
+        localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+        setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+      } catch (e) {}
       setCommTitle('');
       setCommLogo('');
       setCommJoinLink('');
@@ -1468,6 +1573,25 @@ export default function App() {
       });
       if (res.success) {
         addNotification('Advance claim updated!');
+        setAdminPendingRequests(prev => prev.filter(p => !(p.email.toLowerCase() === selectedEntryUser.toLowerCase() && p.type === 'advance')));
+        sendNativePushNotification(
+          'CRWO Advance Update',
+          `Advance Claim for ${selectedEntryUser} marked ${adminAdvClaimStatus}!`
+        );
+        try {
+          const newNotif = {
+            id: `notif-adv-${Date.now()}`,
+            title: 'Advance Claim Resolved',
+            message: `Your advance claim has been marked ${adminAdvClaimStatus} by Admin.`,
+            type: 'advance',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: adminAdvClaimStatus === 'SETTLED' ? 'RESOLVED' : 'INFO'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
         setAdminAdvClaimStatus('PENDING'); setAdminAdvPaymentDate(''); setAdminAdvPaymentTime('');
         setAdminAdvPaymentUtr(''); setAdminAdvRejectionReason(''); setAdminAdvSelectedSlNo(null);
         fetchSelectedUserAdvances(selectedEntryUser);
@@ -1822,6 +1946,25 @@ export default function App() {
       });
       if (res.success) {
         addNotification(`Ticket ${ticketId} updated!`);
+        setAdminPendingRequests(prev => prev.filter(p => !(p.email.toLowerCase() === selectedEntryUser.toLowerCase() && p.type === 'complain')));
+        sendNativePushNotification(
+          'CRWO Support Ticket Update',
+          `Support Ticket #${ticketId} marked ${adminComplainStatus} by Admin!`
+        );
+        try {
+          const newNotif = {
+            id: `notif-comp-${Date.now()}`,
+            title: 'Support Ticket Resolved',
+            message: `Your support ticket #${ticketId} has been marked ${adminComplainStatus} by Admin.`,
+            type: 'support',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: adminComplainStatus === 'RESOLVED' ? 'RESOLVED' : 'INFO'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
         setAdminComplainStatus('PENDING'); setAdminComplainReply('');
         setAdminComplainSelectedTicketId(null);
         fetchSelectedUserComplaints(selectedEntryUser);
@@ -1925,6 +2068,18 @@ export default function App() {
     } catch (e) {
       console.warn(e);
     }
+  }, [adminAuthenticated]);
+
+  useEffect(() => {
+    // Request native Android/Web notification permission
+    requestNativeNotificationPermission().catch(console.warn);
+  }, []);
+
+  useEffect(() => {
+    if (!adminAuthenticated) return;
+    fetchAdminPendingRequests();
+    const interval = setInterval(fetchAdminPendingRequests, 20000);
+    return () => clearInterval(interval);
   }, [adminAuthenticated]);
 
   useEffect(() => {
@@ -2472,6 +2627,64 @@ export default function App() {
     )
   );
 
+  // Dynamic computed filtered members
+  const membersToUse = registeredMembers.length > 0 
+    ? registeredMembers 
+    : registeredUsers.map((email, idx) => ({
+        email,
+        userId: `CRWO-MEM-${String(idx + 1).padStart(3, '0')}`,
+        name: email.split('@')[0],
+        designation: 'HOLDER',
+        state: 'N/A',
+        district: 'N/A',
+        joinedDate: '2026-01-01'
+      }));
+
+  const uniqueDesignations = Array.from(new Set(membersToUse.map(m => m.designation).filter(Boolean)));
+  const uniqueStates = Array.from(new Set(membersToUse.map(m => m.state).filter(s => s && s !== 'N/A')));
+  const uniqueDistricts = Array.from(new Set(
+    membersToUse
+      .filter(m => filterState === 'ALL' || (m.state && m.state.toLowerCase() === filterState.toLowerCase()))
+      .map(m => m.district)
+      .filter(d => d && d !== 'N/A')
+  ));
+
+  const filteredMembers = membersToUse.filter(m => {
+    if (memberSearchQuery.trim()) {
+      const q = memberSearchQuery.toLowerCase().trim();
+      const matchEmail = (m.email || '').toLowerCase().includes(q);
+      const matchId = (m.userId || '').toLowerCase().includes(q);
+      const matchName = (m.name || '').toLowerCase().includes(q);
+      if (!matchEmail && !matchId && !matchName) return false;
+    }
+
+    if (filterDesignation !== 'ALL' && (m.designation || '').toUpperCase() !== filterDesignation.toUpperCase()) {
+      return false;
+    }
+
+    if (filterState !== 'ALL' && (m.state || '').toLowerCase() !== filterState.toLowerCase()) {
+      return false;
+    }
+
+    if (filterDistrict !== 'ALL' && (m.district || '').toLowerCase() !== filterDistrict.toLowerCase()) {
+      return false;
+    }
+
+    return true;
+  }).sort((a, b) => {
+    if (filterJoiningSort === 'NEWEST') {
+      return new Date(b.joinedDate || 0).getTime() - new Date(a.joinedDate || 0).getTime();
+    } else if (filterJoiningSort === 'OLDEST') {
+      return new Date(a.joinedDate || 0).getTime() - new Date(b.joinedDate || 0).getTime();
+    }
+    return 0;
+  });
+
+  const activeFiltersCount = (filterDesignation !== 'ALL' ? 1 : 0) + 
+                             (filterState !== 'ALL' ? 1 : 0) + 
+                             (filterDistrict !== 'ALL' ? 1 : 0) + 
+                             (filterJoiningSort !== 'NONE' ? 1 : 0);
+
   return (
     <div className={`min-h-screen font-sans ${darkMode ? 'crypto-bg-dark text-slate-100' : 'crypto-bg-light text-slate-800'} transition-colors duration-300 relative overflow-x-hidden`}>
       <WaveBackground darkMode={darkMode} />
@@ -2513,6 +2726,102 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {/* USER NOTIFICATION TELEMETRY MODAL */}
+      {isUserNotificationOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-2xl space-y-4 font-sans text-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+              <div className="flex items-center gap-2">
+                <Bell className="w-5 h-5 text-teal-400" />
+                <h3 className="text-sm font-bold font-orbitron uppercase tracking-wider text-teal-400">
+                  Notification Telemetry & Alerts
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsUserNotificationOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Native Mobile Permission Banner */}
+            <div className="p-3 rounded-xl border border-teal-500/30 bg-teal-500/10 flex items-center justify-between gap-3">
+              <div className="text-xs leading-tight">
+                <p className="font-bold text-teal-300">Mobile Screen Push Alerts</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Receive alerts on lock screen when query is resolved</p>
+              </div>
+              <button
+                onClick={async () => {
+                  const granted = await requestNativeNotificationPermission();
+                  if (granted) {
+                    addNotification("Mobile notification permission granted!");
+                    sendNativePushNotification("CRWO Notifications Active", "You will now receive instant alerts on your phone screen!");
+                  } else {
+                    addNotification("Permission not granted. Enable in phone settings.");
+                  }
+                }}
+                className="px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-teal-500 text-slate-950 hover:bg-teal-400 transition shrink-0 cursor-pointer"
+              >
+                Enable Access
+              </button>
+            </div>
+
+            {/* Notification History Feed */}
+            <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
+              {userTelemetryNotifications.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 space-y-2">
+                  <Bell className="w-8 h-8 text-slate-600 mx-auto" />
+                  <p>No new notifications yet.</p>
+                  <p className="text-[10px] text-slate-500">Updates on your advance requests, support tickets, and community announcements will appear here.</p>
+                </div>
+              ) : (
+                userTelemetryNotifications.map((n) => (
+                  <div
+                    key={n.id}
+                    className={`p-3 rounded-xl border text-left space-y-1 transition ${
+                      n.status === 'RESOLVED'
+                        ? 'border-emerald-500/40 bg-emerald-500/10'
+                        : 'border-slate-800 bg-slate-900/60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-[10px] font-bold font-orbitron uppercase tracking-wider ${
+                        n.status === 'RESOLVED' ? 'text-emerald-400' : 'text-teal-400'
+                      }`}>
+                        {n.title}
+                      </span>
+                      <span className="text-[9px] font-mono text-slate-500">{n.timestamp}</span>
+                    </div>
+                    <p className="text-xs text-slate-300 leading-relaxed">{n.message}</p>
+                    {n.status === 'RESOLVED' && (
+                      <span className="inline-block mt-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        ✓ REQUEST IS RESOLVED
+                      </span>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {userTelemetryNotifications.length > 0 && (
+              <div className="pt-2 border-t border-slate-800/80 flex justify-end">
+                <button
+                  onClick={() => {
+                    localStorage.removeItem('crwo_user_telemetry');
+                    setUserTelemetryNotifications([]);
+                    addNotification("Notification telemetry cleared.");
+                  }}
+                  className="text-[10px] text-rose-400 hover:underline cursor-pointer"
+                >
+                  Clear All History
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* HEADER SECTION */}
       <header className={`sticky top-0 z-40 border-b backdrop-blur-md transition-all duration-300 ${darkMode ? 'bg-slate-950/90 border-slate-800/80' : 'bg-white/90 border-slate-200'}`}>
@@ -2673,6 +2982,27 @@ export default function App() {
 
                 {/* Right Side Actions: Theme & Account status */}
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {/* User Notification Bell */}
+                  <button 
+                    onClick={() => {
+                      setIsUserNotificationOpen(prev => !prev);
+                      requestNativeNotificationPermission().catch(console.warn);
+                    }}
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all duration-200 active:scale-[0.95] cursor-pointer relative ${
+                      userTelemetryNotifications.length > 0
+                        ? 'bg-teal-500/20 border-teal-500/50 text-teal-300 shadow-[0_0_8px_rgba(20,184,166,0.25)]'
+                        : darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    }`}
+                    title="User Notifications & Telemetry"
+                  >
+                    <Bell className="w-3.5 h-3.5 text-teal-400" />
+                    {userTelemetryNotifications.length > 0 && (
+                      <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 text-slate-950 font-black text-[8px] flex items-center justify-center animate-pulse">
+                        {userTelemetryNotifications.length}
+                      </span>
+                    )}
+                  </button>
+
                   {/* Theme toggle */}
                   <button 
                     onClick={() => setDarkMode(!darkMode)}
@@ -2959,6 +3289,27 @@ export default function App() {
               <PhoneCall className="w-4 h-4" />
             </button>
 
+            {/* User Notification Bell (Desktop) */}
+            <button 
+              onClick={() => {
+                setIsUserNotificationOpen(prev => !prev);
+                requestNativeNotificationPermission().catch(console.warn);
+              }}
+              className={`w-10 h-10 rounded-lg flex items-center justify-center border transition-all duration-200 cursor-pointer relative ${
+                userTelemetryNotifications.length > 0
+                  ? 'bg-teal-500/20 border-teal-500/50 text-teal-300 shadow-[0_0_10px_rgba(20,184,166,0.3)]'
+                  : darkMode ? 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+              }`}
+              title="User Notifications & Telemetry"
+            >
+              <Bell className="w-4 h-4 text-teal-400" />
+              {userTelemetryNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-400 text-slate-950 font-black text-[9px] flex items-center justify-center animate-pulse">
+                  {userTelemetryNotifications.length}
+                </span>
+              )}
+            </button>
+
             {/* Dark Mode Toggle */}
             <button 
               onClick={() => setDarkMode(!darkMode)}
@@ -3196,7 +3547,96 @@ export default function App() {
                           System parameters control panel and member logs.
                         </p>
                       </div>
-                      <div className="flex items-center justify-center gap-2 w-full sm:w-auto">
+                      <div className="flex flex-wrap items-center justify-center gap-2 w-full sm:w-auto">
+                        {/* Notification Telemetry Button & Dropdown */}
+                        <div className="relative">
+                          <button
+                            onClick={() => {
+                              setIsAdminNotificationOpen(prev => !prev);
+                              fetchAdminPendingRequests();
+                            }}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                              adminPendingRequests.length > 0
+                                ? 'border-amber-500/60 bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 shadow-[0_0_12px_rgba(245,158,11,0.25)]'
+                                : darkMode ? 'border-slate-800 hover:bg-slate-900 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                            }`}
+                            title="Member Requests Telemetry"
+                          >
+                            <Bell className="w-3.5 h-3.5 text-amber-400" />
+                            <span>Telemetry</span>
+                            {adminPendingRequests.length > 0 && (
+                              <span className="px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black text-[9px] animate-pulse">
+                                {adminPendingRequests.length} PENDING
+                              </span>
+                            )}
+                          </button>
+
+                          {/* Telemetry Dropdown Panel */}
+                          {isAdminNotificationOpen && (
+                            <div className="absolute right-0 sm:right-auto sm:left-0 top-full mt-2 w-80 sm:w-96 rounded-2xl border border-slate-800 bg-slate-950/95 backdrop-blur-xl shadow-2xl z-50 p-3.5 space-y-3 font-sans">
+                              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
+                                  <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-amber-400">
+                                    PENDING REQUESTS ({adminPendingRequests.length})
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => fetchAdminPendingRequests()}
+                                  className="text-[10px] text-teal-400 hover:text-teal-300 underline font-semibold cursor-pointer"
+                                >
+                                  {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
+                                </button>
+                              </div>
+
+                              <div className="max-h-72 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                {adminPendingRequests.length === 0 ? (
+                                  <div className="py-6 text-center text-xs text-slate-400">
+                                    <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
+                                    No pending user queries! All requests are resolved.
+                                  </div>
+                                ) : (
+                                  adminPendingRequests.map((req) => (
+                                    <div
+                                      key={req.id}
+                                      onClick={() => {
+                                        setAdminFormTab(req.moduleTab || 'entry');
+                                        setSelectedEntryUser(req.email);
+                                        setIsAdminNotificationOpen(false);
+                                        addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
+                                      }}
+                                      className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/80 hover:border-amber-500/50 hover:bg-slate-850/90 transition cursor-pointer text-left space-y-1 group"
+                                    >
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-teal-400">
+                                          {req.userId || 'MEMBER'}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                                          ● PENDING
+                                        </span>
+                                      </div>
+                                      <div className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">
+                                        {req.title}
+                                      </div>
+                                      <div className="text-[11px] text-slate-400 break-all line-clamp-2">
+                                        {req.details || req.email}
+                                      </div>
+                                      <div className="text-[9px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/50">
+                                        <span className="truncate">{req.email}</span>
+                                        <span className="text-teal-400 font-semibold shrink-0">Touch to Resolve →</span>
+                                      </div>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+
+                              <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/60">
+                                Touch any request to auto-select user & jump to module.
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         <button 
                           onClick={() => {
                             setAdminAuthenticated(false);
@@ -3204,7 +3644,7 @@ export default function App() {
                             setAdminPass('');
                             addNotification('Admin Terminal locked.');
                           }} 
-                          className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg border transition text-center cursor-pointer ${
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition text-center cursor-pointer ${
                             darkMode ? 'border-rose-500/30 hover:bg-rose-500/10 text-rose-400' : 'border-rose-200 hover:bg-rose-50 text-rose-600'
                           }`}
                         >
@@ -3214,13 +3654,14 @@ export default function App() {
                           onClick={() => {
                             fetchAdminStats();
                             fetchRegisteredUsers();
+                            fetchAdminPendingRequests();
                             if (selectedEntryUser) {
                               fetchSelectedUserLedger(selectedEntryUser);
                               fetchSelectedUserBankDetails(selectedEntryUser);
                             }
                             addNotification('Admin Terminal synced with secure database.');
                           }} 
-                          className={`flex-1 sm:flex-initial px-3 py-1.5 text-xs font-semibold rounded-lg border transition text-center cursor-pointer ${
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition text-center cursor-pointer ${
                             darkMode ? 'border-slate-800 hover:bg-slate-900 text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                           }`}
                         >
@@ -3365,24 +3806,198 @@ export default function App() {
                         </div>
 
                       <div className={`p-5 rounded-xl border space-y-4 flex-1 flex flex-col ${darkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                        {/* Target Member Dropdown (Visible to all tabs) */}
-                        <div>
-                          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                            Select Target Member Email *
-                          </label>
-                          {registeredUsers.length === 0 ? (
-                            <div className="text-xs text-rose-400 font-medium py-1">No registered users found. Ask members to sign up!</div>
-                          ) : (
-                            <select
-                              value={selectedEntryUser}
-                              onChange={(e) => setSelectedEntryUser(e.target.value)}
-                              className={`w-full px-3 py-2 text-[11px] sm:text-xs truncate rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none' : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 focus:outline-none'}`}
-                            >
-                              {registeredUsers.map(email => (
-                                <option key={email} value={email}>{email}</option>
-                              ))}
-                            </select>
+                        {/* TARGET MEMBER SEARCH & ADVANCED MULTI-FILTERS */}
+                        <div className="space-y-3 pb-3 border-b border-slate-800/40">
+                          {/* Search Input + Filters Button */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-teal-400 font-orbitron">
+                                Member Search & Filters
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setShowFiltersPanel(prev => !prev)}
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition flex items-center gap-1 cursor-pointer ${
+                                  showFiltersPanel || activeFiltersCount > 0
+                                    ? 'bg-teal-500/20 border-teal-400 text-teal-300 shadow-[0_0_8px_rgba(20,184,166,0.3)]'
+                                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
+                                }`}
+                              >
+                                <SlidersHorizontal className="w-3 h-3 text-teal-400" />
+                                <span>Filter by Designation / State</span>
+                                {activeFiltersCount > 0 && (
+                                  <span className="w-3.5 h-3.5 rounded-full bg-teal-400 text-slate-950 text-[8px] font-black flex items-center justify-center">
+                                    {activeFiltersCount}
+                                  </span>
+                                )}
+                              </button>
+                            </div>
+
+                            {/* Direct Search Bar */}
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              <input
+                                type="text"
+                                value={memberSearchQuery}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setMemberSearchQuery(val);
+                                  if (val.trim()) {
+                                    const match = membersToUse.find(m => 
+                                      m.email.toLowerCase() === val.toLowerCase().trim() ||
+                                      m.userId.toLowerCase() === val.toLowerCase().trim()
+                                    );
+                                    if (match) {
+                                      setSelectedEntryUser(match.email);
+                                    }
+                                  }
+                                }}
+                                placeholder="Direct search User ID or Gmail (e.g. CRWO-101 / raj@gmail.com)..."
+                                className={`w-full pl-8 pr-7 py-2 text-xs rounded-lg border ${
+                                  darkMode
+                                    ? 'bg-slate-900 border-slate-800 focus:border-teal-500 text-slate-200 focus:outline-none placeholder:text-slate-500'
+                                    : 'bg-white border-slate-200 focus:border-blue-500 focus:outline-none'
+                                }`}
+                              />
+                              {memberSearchQuery && (
+                                <button
+                                  type="button"
+                                  onClick={() => setMemberSearchQuery('')}
+                                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer p-0.5"
+                                  title="Clear Search"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Multi-Filters Controls Panel */}
+                          {(showFiltersPanel || activeFiltersCount > 0) && (
+                            <div className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/70 space-y-2">
+                              <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800/50 pb-1.5">
+                                <span>Multi-Filter Parameters</span>
+                                {activeFiltersCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setFilterDesignation('ALL');
+                                      setFilterJoiningSort('NONE');
+                                      setFilterState('ALL');
+                                      setFilterDistrict('ALL');
+                                    }}
+                                    className="text-rose-400 hover:underline text-[9px] cursor-pointer"
+                                  >
+                                    Reset Filters
+                                  </button>
+                                )}
+                              </div>
+
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                {/* Filter 1: Designation */}
+                                <div>
+                                  <label className="block text-[9px] font-semibold text-slate-400 mb-0.5">Designation</label>
+                                  <select
+                                    value={filterDesignation}
+                                    onChange={(e) => setFilterDesignation(e.target.value)}
+                                    className="w-full px-2 py-1 text-[11px] rounded border bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none"
+                                  >
+                                    <option value="ALL">All Roles</option>
+                                    <option value="HOLDER">Holder</option>
+                                    <option value="TEAM LEADER">Team Leader (TL)</option>
+                                    <option value="INCHARGE">Incharge</option>
+                                    {uniqueDesignations
+                                      .filter(d => !['HOLDER', 'TEAM LEADER', 'INCHARGE'].includes(d.toUpperCase()))
+                                      .map(d => (
+                                        <option key={d} value={d}>{d}</option>
+                                      ))
+                                    }
+                                  </select>
+                                </div>
+
+                                {/* Filter 2: Date of Joining */}
+                                <div>
+                                  <label className="block text-[9px] font-semibold text-slate-400 mb-0.5">Joining Date</label>
+                                  <select
+                                    value={filterJoiningSort}
+                                    onChange={(e) => setFilterJoiningSort(e.target.value as any)}
+                                    className="w-full px-2 py-1 text-[11px] rounded border bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none"
+                                  >
+                                    <option value="NONE">All Joining Dates</option>
+                                    <option value="NEWEST">Newest First</option>
+                                    <option value="OLDEST">Oldest First</option>
+                                  </select>
+                                </div>
+
+                                {/* Filter 3: State */}
+                                <div>
+                                  <label className="block text-[9px] font-semibold text-slate-400 mb-0.5">State</label>
+                                  <select
+                                    value={filterState}
+                                    onChange={(e) => {
+                                      setFilterState(e.target.value);
+                                      setFilterDistrict('ALL');
+                                    }}
+                                    className="w-full px-2 py-1 text-[11px] rounded border bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none"
+                                  >
+                                    <option value="ALL">All States</option>
+                                    {uniqueStates.map(st => (
+                                      <option key={st} value={st}>{st}</option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                {/* Filter 4: District */}
+                                <div>
+                                  <label className="block text-[9px] font-semibold text-slate-400 mb-0.5">District</label>
+                                  <select
+                                    value={filterDistrict}
+                                    onChange={(e) => setFilterDistrict(e.target.value)}
+                                    className="w-full px-2 py-1 text-[11px] rounded border bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none"
+                                  >
+                                    <option value="ALL">All Districts</option>
+                                    {uniqueDistricts.map(dt => (
+                                      <option key={dt} value={dt}>{dt}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
                           )}
+
+                          {/* Member Dropdown */}
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                Target Member Dropdown *
+                              </label>
+                              <span className="text-[10px] font-mono text-teal-400 font-semibold">
+                                Showing {filteredMembers.length} of {membersToUse.length}
+                              </span>
+                            </div>
+
+                            {filteredMembers.length === 0 ? (
+                              <div className="text-xs text-amber-400 font-medium py-2 px-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-center">
+                                No member matches search or filter criteria.
+                              </div>
+                            ) : (
+                              <select
+                                value={selectedEntryUser}
+                                onChange={(e) => setSelectedEntryUser(e.target.value)}
+                                className={`w-full px-3 py-2 text-[11px] sm:text-xs truncate rounded-lg border ${
+                                  darkMode
+                                    ? 'bg-slate-900 border-slate-800 text-slate-200 focus:border-teal-500 focus:outline-none'
+                                    : 'bg-white border-slate-200 text-slate-800 focus:border-blue-500 focus:outline-none'
+                                }`}
+                              >
+                                {filteredMembers.map(m => (
+                                  <option key={m.email} value={m.email}>
+                                    [{m.userId}] {m.name} • {m.email} ({m.designation || 'HOLDER'}{m.state && m.state !== 'N/A' ? ` | ${m.state}` : ''})
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
                         </div>
 
                         {adminFormTab === 'entry' ? (
