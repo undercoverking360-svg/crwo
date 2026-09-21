@@ -2742,38 +2742,47 @@ export default function App() {
         ))}
       </div>
 
-      {/* ADMIN PENDING REQUESTS TELEMETRY MODAL */}
+      {/* ADMIN PENDING REQUESTS TELEMETRY — FULL SCREEN OVERLAY */}
       {isAdminNotificationOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl p-4 space-y-3 font-sans max-h-[85vh] flex flex-col text-slate-200">
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping"></span>
-                <span className="text-xs font-bold font-orbitron uppercase tracking-wider text-amber-400">
-                  PENDING REQUESTS ({adminPendingRequests.length})
+        <div className="fixed inset-0 z-[99999] bg-slate-950 flex flex-col font-sans text-slate-200 overflow-hidden">
+          {/* Full-screen header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/95 backdrop-blur-sm shrink-0">
+            <div className="flex items-center gap-3">
+              <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping"></span>
+              <div>
+                <span className="text-sm font-black font-orbitron uppercase tracking-widest text-amber-400">
+                  MEMBER TELEMETRY — PENDING REQUESTS
                 </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => fetchAdminPendingRequests()}
-                  className="text-[10px] text-teal-400 hover:text-teal-300 font-semibold cursor-pointer px-2 py-1 rounded bg-slate-900 border border-slate-800"
-                >
-                  {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
-                </button>
-                <button
-                  onClick={() => setIsAdminNotificationOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <p className="text-[10px] text-slate-500 mt-0.5">Admin Operations Centre • Live Alerts Feed</p>
               </div>
             </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { fetchAdminPendingRequests(); }}
+                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-teal-400 hover:text-teal-300 transition cursor-pointer"
+              >
+                {isRefreshingPending ? 'Refreshing...' : 'Refresh'}
+              </button>
+              <button
+                onClick={() => setIsAdminNotificationOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center border border-slate-800 bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-            <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar flex-1 max-h-[60vh]">
+          {/* Scrollable content */}
+          <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+            <div className="max-w-2xl mx-auto space-y-3">
               {adminPendingRequests.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400">
-                  <Check className="w-6 h-6 text-emerald-400 mx-auto mb-1.5" />
-                  No pending user queries! All requests are resolved.
+                <div className="flex flex-col items-center justify-center py-24 space-y-4 text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                    <Check className="w-8 h-8 text-emerald-400" />
+                  </div>
+                  <p className="text-sm font-bold text-emerald-400 font-orbitron uppercase tracking-wider">All Clear</p>
+                  <p className="text-xs text-slate-500">No pending user queries. All requests have been resolved.</p>
                 </div>
               ) : (
                 adminPendingRequests.map((req) => (
@@ -2785,34 +2794,35 @@ export default function App() {
                       setIsAdminNotificationOpen(false);
                       addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
                     }}
-                    className="p-2.5 rounded-xl border border-slate-800/80 bg-slate-900/80 hover:border-amber-500/50 hover:bg-slate-850/90 transition cursor-pointer text-left space-y-1 group"
+                    className="p-4 rounded-2xl border border-slate-800 bg-slate-900/80 hover:border-amber-500/40 hover:bg-slate-900 transition cursor-pointer text-left space-y-2 group"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider font-mono text-teal-400">
+                      <span className="text-[11px] font-black uppercase tracking-widest font-mono text-teal-400">
                         {req.userId || 'MEMBER'}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/40 text-amber-300">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 border border-amber-500/40 text-amber-300">
                         ● PENDING
                       </span>
                     </div>
-                    <div className="text-xs font-bold text-slate-200 group-hover:text-amber-300 transition">
+                    <div className="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">
                       {req.title}
                     </div>
-                    <div className="text-[11px] text-slate-400 break-all line-clamp-2">
+                    <div className="text-xs text-slate-400 break-all">
                       {req.details || req.email}
                     </div>
-                    <div className="text-[9px] text-slate-400 flex items-center justify-between pt-1 border-t border-slate-800/50">
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[10px] text-slate-500">
                       <span className="truncate">{req.email}</span>
-                      <span className="text-teal-400 font-semibold shrink-0">Touch to Resolve →</span>
+                      <span className="text-teal-400 font-semibold shrink-0">Tap to Resolve →</span>
                     </div>
                   </div>
                 ))
               )}
             </div>
+          </div>
 
-            <div className="text-[9px] text-slate-400 text-center pt-1 border-t border-slate-800/60">
-              Touch any request to auto-select user & jump to module.
-            </div>
+          {/* Footer */}
+          <div className="shrink-0 px-5 py-3 border-t border-slate-800/60 bg-slate-950/95 text-[9px] text-slate-600 text-center">
+            Tap any request card to auto-select the member and jump to the relevant module.
           </div>
         </div>
       )}
