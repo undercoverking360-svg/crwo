@@ -6259,24 +6259,18 @@ export default function App() {
                     </div>
 
                     {userEmail && (
-                      <div className="flex items-center gap-3">
+                      <div className="w-full sm:w-auto flex items-center justify-center">
                         {userKyc && (userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED') ? (
-                          <div className="flex items-center gap-3">
-                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
-                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                              KYC APPROVED • UNLOCKED
-                            </span>
-                            {/* Attractive Glowing Download Button */}
-                            <a
-                              href="https://drive.google.com/uc?export=download&id=1eZ6lYBxHzxo2148aEw0xaxSSNPFmX0BN"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2.5 bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 hover:from-teal-300 hover:to-emerald-400 transition-all duration-300 shadow-lg shadow-teal-500/20 hover:scale-105 transform uppercase tracking-wider shrink-0 cursor-pointer"
-                            >
-                              <Download className="w-4 h-4 text-slate-950 animate-bounce" />
-                              <span>Download Plan Book (PDF)</span>
-                            </a>
-                          </div>
+                          /* Attractive Glowing Centered Download Button */
+                          <a
+                            href="https://drive.google.com/uc?export=download&id=1eZ6lYBxHzxo2148aEw0xaxSSNPFmX0BN"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2.5 bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 hover:from-teal-300 hover:to-emerald-400 transition-all duration-300 shadow-lg shadow-teal-500/20 active:scale-95 uppercase tracking-wider cursor-pointer"
+                          >
+                            <Download className="w-4 h-4 text-slate-950 animate-bounce shrink-0" />
+                            <span className="whitespace-nowrap">Download Plan Book (PDF)</span>
+                          </a>
                         ) : (
                           <span className="px-3 py-1.5 rounded-lg text-[10px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-amber-400"></span>
