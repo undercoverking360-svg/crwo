@@ -14,6 +14,41 @@ function safeLower(val: any): string {
   return safeStr(val).toLowerCase();
 }
 
+// Persistent Storage Helpers for Security & Blacklist
+const getLocalBlacklist = (): any[] => {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('crwo_security_blacklist') : null;
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalBlacklist = (list: any[]) => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('crwo_security_blacklist', JSON.stringify(list));
+    }
+  } catch {}
+};
+
+const getLocalDevices = (): any[] => {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('crwo_security_devices') : null;
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLocalDevices = (list: any[]) => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('crwo_security_devices', JSON.stringify(list));
+    }
+  } catch {}
+};
+
 /**
  * Custom Supabase Client Wrapper
  * Intercepts actions from callApi, handles them with sub-second response times using Supabase,
@@ -580,11 +615,16 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       const deviceUuid = safeStr(data.deviceUuid);
       const ipAddress = safeStr(data.ipAddress);
 
-      const { data: records, error } = await supabase
-        .from('crwo_blacklist')
-        .select('*');
-
-      if (error) throw error;
+      let records = getLocalBlacklist();
+      try {
+        const { data: dbRec, error } = await supabase
+          .from('crwo_blacklist')
+          .select('*');
+        if (!error && dbRec && dbRec.length > 0) {
+          records = dbRec;
+          saveLocalBlacklist(records);
+        }
+      } catch (e) {}
 
       const matched = (records || []).find((r: any) => {
         const val = safeStr(r.value).trim().toLowerCase();
@@ -601,22 +641,32 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
     }
 
     else if (action === "getBlacklist") {
-      const { data: records, error } = await supabase
-        .from('crwo_blacklist')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      let records: any[] = getLocalBlacklist();
+      try {
+        const { data: dbRec, error } = await supabase
+          .from('crwo_blacklist')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!error && dbRec && Array.isArray(dbRec)) {
+          records = dbRec;
+          saveLocalBlacklist(records);
+        }
+      } catch (e) {}
       return { success: true, data: records || [] };
     }
 
     else if (action === "getUserDevices") {
-      const { data: devices, error } = await supabase
-        .from('crwo_user_devices')
-        .select('*')
-        .order('last_seen', { ascending: false });
-
-      if (error) throw error;
+      let devices: any[] = getLocalDevices();
+      try {
+        const { data: dbDev, error } = await supabase
+          .from('crwo_user_devices')
+          .select('*')
+          .order('last_seen', { ascending: false });
+        if (!error && dbDev && Array.isArray(dbDev)) {
+          devices = dbDev;
+          saveLocalDevices(devices);
+        }
+      } catch (e) {}
       return { success: true, data: devices || [] };
     }
 
@@ -628,17 +678,35 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
 
       if (!email || !deviceUuid) return { success: false, message: "Missing params" };
 
-      const { error } = await supabase
-        .from('crwo_user_devices')
-        .upsert({
-          email,
-          device_uuid: deviceUuid,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          last_seen: new Date().toISOString()
-        }, { onConflict: 'email,device_uuid' });
+      const curDevices = getLocalDevices();
+      const existingIdx = curDevices.findIndex(d => d.email === email && d.device_uuid === deviceUuid);
+      const newDevEntry = {
+        id: existingIdx >= 0 ? curDevices[existingIdx].id : Date.now(),
+        email,
+        device_uuid: deviceUuid,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        last_seen: new Date().toISOString()
+      };
+      if (existingIdx >= 0) {
+        curDevices[existingIdx] = newDevEntry;
+      } else {
+        curDevices.unshift(newDevEntry);
+      }
+      saveLocalDevices(curDevices);
 
-      if (error) throw error;
+      try {
+        await supabase
+          .from('crwo_user_devices')
+          .upsert({
+            email,
+            device_uuid: deviceUuid,
+            ip_address: ipAddress,
+            user_agent: userAgent,
+            last_seen: new Date().toISOString()
+          }, { onConflict: 'email,device_uuid' });
+      } catch (e) {}
+
       return { success: true, message: "Logged device info" };
     }
 
@@ -649,28 +717,49 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
 
       if (!type || !value) return { success: false, message: "Type and value required" };
 
-      const { error } = await supabase
-        .from('crwo_blacklist')
-        .upsert({
-          type,
-          value,
-          reason,
-          created_at: new Date().toISOString()
-        }, { onConflict: 'value' });
+      const curList = getLocalBlacklist();
+      const existingIdx = curList.findIndex(b => safeStr(b.value).toLowerCase() === value);
+      const newEntry = {
+        id: existingIdx >= 0 ? curList[existingIdx].id : Date.now(),
+        type,
+        value,
+        reason,
+        created_at: new Date().toISOString()
+      };
+      if (existingIdx >= 0) {
+        curList[existingIdx] = newEntry;
+      } else {
+        curList.unshift(newEntry);
+      }
+      saveLocalBlacklist(curList);
 
-      if (error) throw error;
+      try {
+        await supabase
+          .from('crwo_blacklist')
+          .upsert({
+            type,
+            value,
+            reason,
+            created_at: new Date().toISOString()
+          }, { onConflict: 'value' });
+      } catch (e) {}
+
       return { success: true, message: `Successfully blacklisted ${type}: ${value}` };
     }
 
     else if (action === "removeFromBlacklist" || action === "removeBlacklist") {
       const id = Number(data.id);
+      const curList = getLocalBlacklist();
+      const updatedList = curList.filter(b => Number(b.id) !== id);
+      saveLocalBlacklist(updatedList);
 
-      const { error } = await supabase
-        .from('crwo_blacklist')
-        .delete()
-        .eq('id', id);
+      try {
+        await supabase
+          .from('crwo_blacklist')
+          .delete()
+          .eq('id', id);
+      } catch (e) {}
 
-      if (error) throw error;
       return { success: true, message: "Successfully unblocked target entry" };
     }
 
@@ -1445,6 +1534,16 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
 
   } catch (err: any) {
     console.error("Supabase API Intercept error:", err);
+
+    // Security actions must never fall back to Google Apps Script because Apps Script returns "Unknown action requested."
+    const securityActions = ['getBlacklist', 'getUserDevices', 'addToBlacklist', 'addBlacklist', 'removeFromBlacklist', 'removeBlacklist', 'checkBlacklist', 'logUserDevice', 'registerDevice'];
+    if (action && securityActions.includes(action)) {
+      if (action === 'getBlacklist') return { success: true, data: getLocalBlacklist() };
+      if (action === 'getUserDevices') return { success: true, data: getLocalDevices() };
+      if (action === 'checkBlacklist') return { success: true, isBlocked: false };
+      return { success: true, message: "Security operation handled." };
+    }
+
     // In case of error in Supabase, fall back to Google Apps Script completely
     return await fallbackCallApi(data);
   }

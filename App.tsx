@@ -5228,7 +5228,191 @@ export default function App() {
                       </div>
 
                       <div className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-white border-slate-200'} min-h-[300px] flex flex-col`}>
-                        {selectedEntryUser ? (
+                        {adminFormTab === 'security' ? (
+                          <div className="space-y-6 text-left">
+                              {/* Device Matcher & Multi-Account Finder */}
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-teal-400 mb-3 flex items-center gap-2">
+                                  <span>Device Matching Terminal (Multi-Account Flag)</span>
+                                </h4>
+                                
+                                <div className="space-y-3">
+                                  {securityDevices.length === 0 ? (
+                                    <div className={`p-4 rounded-xl border text-xs text-center italic ${darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                      No device registration records found.
+                                    </div>
+                                  ) : (
+                                    (() => {
+                                      // Group emails by device_uuid
+                                      const uuidGroups: { [key: string]: { emails: Set<string>, ips: Set<string>, details: any[] } } = {};
+                                      securityDevices.forEach(d => {
+                                        if (!d.device_uuid) return;
+                                        if (!uuidGroups[d.device_uuid]) {
+                                          uuidGroups[d.device_uuid] = { emails: new Set(), ips: new Set(), details: [] };
+                                        }
+                                        uuidGroups[d.device_uuid].emails.add(d.email);
+                                        if (d.ip_address) uuidGroups[d.device_uuid].ips.add(d.ip_address);
+                                        uuidGroups[d.device_uuid].details.push(d);
+                                      });
+
+                                      const multiAccDevices = Object.entries(uuidGroups).filter(([_, g]) => g.emails.size > 1);
+
+                                      if (multiAccDevices.length === 0) {
+                                        return (
+                                          <div className={`p-3 rounded-lg border text-xs text-center italic ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+                                            No multi-account device fingerprints detected. All users appear isolated.
+                                          </div>
+                                        );
+                                      }
+
+                                      return multiAccDevices.map(([uuid, group]) => (
+                                        <div key={uuid} className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 space-y-3 overflow-hidden">
+                                          <div className="flex items-center justify-between flex-wrap gap-2">
+                                            <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+                                              <span>⚠️ MULTI-ACCOUNT THREAT DETECTED</span>
+                                            </div>
+                                            <div className="text-[10px] font-mono text-slate-500 truncate max-w-[160px] sm:max-w-none">ID: {uuid}</div>
+                                          </div>
+                                          
+                                          <div className="text-xs text-slate-300 break-words">
+                                            Device UUID <code className="bg-slate-900 px-1 py-0.5 rounded font-mono text-teal-400 break-all">{uuid}</code> is shared by <span className="font-bold text-white text-sm">{group.emails.size}</span> registered email profiles:
+                                          </div>
+
+                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-3 border-l-2 border-rose-500/30">
+                                            {Array.from(group.emails).map(email => (
+                                              <div key={email} className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 font-mono break-all min-w-0">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0"></span>
+                                                <span>{email}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+
+                                          <div className="text-[10px] text-slate-400 font-mono break-all">
+                                            IP Addresses Used: {Array.from(group.ips).join(', ') || 'Unknown'}
+                                          </div>
+
+                                          <div className="flex flex-wrap gap-2 pt-1.5">
+                                            <button
+                                              onClick={async () => {
+                                                setSecuritySubmitLoading(true);
+                                                try {
+                                                  const res = await callApi({
+                                                    action: 'addToBlacklist',
+                                                    type: 'device',
+                                                    value: uuid,
+                                                    reason: `Multi-account mapping abuse: Linked to ${Array.from(group.emails).join(', ')}`
+                                                  });
+                                                  if (res.success) {
+                                                    addNotification(`Blocked device: ${uuid}`);
+                                                    fetchSecurityData();
+                                                    fetchRegisteredUsers();
+                                                  }
+                                                } catch (e) {
+                                                  console.error(e);
+                                                } finally {
+                                                  setSecuritySubmitLoading(false);
+                                                }
+                                              }}
+                                              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer"
+                                            >
+                                              Block Device Fingerprint
+                                            </button>
+                                            {Array.from(group.ips).map(ip => (
+                                              <button
+                                                key={ip}
+                                                onClick={async () => {
+                                                  setSecuritySubmitLoading(true);
+                                                  try {
+                                                    const res = await callApi({
+                                                      action: 'addToBlacklist',
+                                                      type: 'ip',
+                                                      value: ip,
+                                                      reason: `Multi-account mapping IP abuse: Linked to ${Array.from(group.emails).join(', ')}`
+                                                    });
+                                                    if (res.success) {
+                                                      addNotification(`Blocked IP address: ${ip}`);
+                                                      fetchSecurityData();
+                                                      fetchRegisteredUsers();
+                                                    }
+                                                  } catch (e) {
+                                                    console.error(e);
+                                                  } finally {
+                                                    setSecuritySubmitLoading(false);
+                                                  }
+                                                }}
+                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded bg-rose-950 text-rose-400 hover:bg-rose-900 border border-rose-800 transition cursor-pointer"
+                                              >
+                                                Block IP: {ip}
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      ));
+                                    })()
+                                  )}
+                                </div>
+                              </div>
+
+                              <hr className="border-slate-800" />
+
+                              {/* Active Blacklist Registry */}
+                              <div>
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400 mb-3">
+                                  Active Blacklisted Entities Registry ({securityBlacklist.length})
+                                </h4>
+                                
+                                <div className="space-y-2">
+                                  {securityBlacklist.length === 0 ? (
+                                    <div className="text-xs text-slate-500 italic py-4 text-center">
+                                      No entities currently blacklisted. Access is open.
+                                    </div>
+                                  ) : (
+                                    securityBlacklist.map((item) => (
+                                      <div key={item.id} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden ${darkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                                        <div className="space-y-1 w-full min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
+                                              item.type === 'email' ? 'bg-blue-500/20 text-blue-400' : item.type === 'ip' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'
+                                            }`}>
+                                              {item.type}
+                                            </span>
+                                            <span className="text-xs font-bold font-mono text-white break-all min-w-0">{item.value}</span>
+                                          </div>
+                                          <div className="text-[10px] text-slate-400 break-words">
+                                            Reason: <span className="italic break-all">{item.reason}</span>
+                                          </div>
+                                          <div className="text-[9px] text-slate-500">
+                                            Banned on: {new Date(item.created_at || item.createdAt || Date.now()).toLocaleString()}
+                                          </div>
+                                        </div>
+                                        <button
+                                          onClick={async () => {
+                                            if (!confirm("Are you sure you want to unblock this entry?")) return;
+                                            try {
+                                              const res = await callApi({
+                                                action: 'removeFromBlacklist',
+                                                id: item.id
+                                              });
+                                              if (res.success) {
+                                                addNotification("Entity successfully unblocked.");
+                                                fetchSecurityData();
+                                                fetchRegisteredUsers();
+                                              }
+                                            } catch (e) {
+                                              console.error(e);
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition cursor-pointer shrink-0 self-start sm:self-auto"
+                                        >
+                                          Unblock
+                                        </button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                        ) : selectedEntryUser ? (
                           adminFormTab === 'entry' ? (
                             isAdminLedgerLoading ? (
                               <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
@@ -5792,190 +5976,6 @@ export default function App() {
                                     ))}
                                   </div>
                                 )}
-                              </div>
-                            </div>
-                          ) : adminFormTab === 'security' ? (
-                            <div className="space-y-6 text-left">
-                              {/* Device Matcher & Multi-Account Finder */}
-                              <div>
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-teal-400 mb-3 flex items-center gap-2">
-                                  <span>Device Matching Terminal (Multi-Account Flag)</span>
-                                </h4>
-                                
-                                <div className="space-y-3">
-                                  {securityDevices.length === 0 ? (
-                                    <div className={`p-4 rounded-xl border text-xs text-center italic ${darkMode ? 'bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                                      No device registration records found.
-                                    </div>
-                                  ) : (
-                                    (() => {
-                                      // Group emails by device_uuid
-                                      const uuidGroups: { [key: string]: { emails: Set<string>, ips: Set<string>, details: any[] } } = {};
-                                      securityDevices.forEach(d => {
-                                        if (!d.device_uuid) return;
-                                        if (!uuidGroups[d.device_uuid]) {
-                                          uuidGroups[d.device_uuid] = { emails: new Set(), ips: new Set(), details: [] };
-                                        }
-                                        uuidGroups[d.device_uuid].emails.add(d.email);
-                                        if (d.ip_address) uuidGroups[d.device_uuid].ips.add(d.ip_address);
-                                        uuidGroups[d.device_uuid].details.push(d);
-                                      });
-
-                                      const multiAccDevices = Object.entries(uuidGroups).filter(([_, g]) => g.emails.size > 1);
-
-                                      if (multiAccDevices.length === 0) {
-                                        return (
-                                          <div className={`p-3 rounded-lg border text-xs text-center italic ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-                                            No multi-account device fingerprints detected. All users appear isolated.
-                                          </div>
-                                        );
-                                      }
-
-                                      return multiAccDevices.map(([uuid, group]) => (
-                                        <div key={uuid} className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/5 space-y-3 overflow-hidden">
-                                          <div className="flex items-center justify-between flex-wrap gap-2">
-                                            <div className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
-                                              <span>⚠️ MULTI-ACCOUNT THREAT DETECTED</span>
-                                            </div>
-                                            <div className="text-[10px] font-mono text-slate-500 truncate max-w-[160px] sm:max-w-none">ID: {uuid}</div>
-                                          </div>
-                                          
-                                          <div className="text-xs text-slate-300 break-words">
-                                            Device UUID <code className="bg-slate-900 px-1 py-0.5 rounded font-mono text-teal-400 break-all">{uuid}</code> is shared by <span className="font-bold text-white text-sm">{group.emails.size}</span> registered email profiles:
-                                          </div>
-
-                                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-3 border-l-2 border-rose-500/30">
-                                            {Array.from(group.emails).map(email => (
-                                              <div key={email} className="text-xs font-semibold text-slate-200 flex items-center gap-1.5 font-mono break-all min-w-0">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0"></span>
-                                                <span>{email}</span>
-                                              </div>
-                                            ))}
-                                          </div>
-
-                                          <div className="text-[10px] text-slate-400 font-mono break-all">
-                                            IP Addresses Used: {Array.from(group.ips).join(', ') || 'Unknown'}
-                                          </div>
-
-                                          <div className="flex flex-wrap gap-2 pt-1.5">
-                                            <button
-                                              onClick={async () => {
-                                                setSecuritySubmitLoading(true);
-                                                try {
-                                                  const res = await callApi({
-                                                    action: 'addToBlacklist',
-                                                    type: 'device',
-                                                    value: uuid,
-                                                    reason: `Multi-account mapping abuse: Linked to ${Array.from(group.emails).join(', ')}`
-                                                  });
-                                                  if (res.success) {
-                                                    addNotification(`Blocked device: ${uuid}`);
-                                                    fetchSecurityData();
-                                                    fetchRegisteredUsers();
-                                                  }
-                                                } catch (e) {
-                                                  console.error(e);
-                                                } finally {
-                                                  setSecuritySubmitLoading(false);
-                                                }
-                                              }}
-                                              className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded bg-rose-600 text-white hover:bg-rose-700 transition cursor-pointer"
-                                            >
-                                              Block Device Fingerprint
-                                            </button>
-                                            {Array.from(group.ips).map(ip => (
-                                              <button
-                                                key={ip}
-                                                onClick={async () => {
-                                                  setSecuritySubmitLoading(true);
-                                                  try {
-                                                    const res = await callApi({
-                                                      action: 'addToBlacklist',
-                                                      type: 'ip',
-                                                      value: ip,
-                                                      reason: `Multi-account mapping IP abuse: Linked to ${Array.from(group.emails).join(', ')}`
-                                                    });
-                                                    if (res.success) {
-                                                      addNotification(`Blocked IP address: ${ip}`);
-                                                      fetchSecurityData();
-                                                      fetchRegisteredUsers();
-                                                    }
-                                                  } catch (e) {
-                                                    console.error(e);
-                                                  } finally {
-                                                    setSecuritySubmitLoading(false);
-                                                  }
-                                                }}
-                                                className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded bg-rose-950 text-rose-400 hover:bg-rose-900 border border-rose-800 transition cursor-pointer"
-                                              >
-                                                Block IP: {ip}
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ));
-                                    })()
-                                  )}
-                                </div>
-                              </div>
-
-                              <hr className="border-slate-800" />
-
-                              {/* Active Blacklist Registry */}
-                              <div>
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400 mb-3">
-                                  Active Blacklisted Entities Registry ({securityBlacklist.length})
-                                </h4>
-                                
-                                <div className="space-y-2">
-                                  {securityBlacklist.length === 0 ? (
-                                    <div className="text-xs text-slate-500 italic py-4 text-center">
-                                      No entities currently blacklisted. Access is open.
-                                    </div>
-                                  ) : (
-                                    securityBlacklist.map((item) => (
-                                      <div key={item.id} className={`p-3 rounded-lg border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 overflow-hidden ${darkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                                        <div className="space-y-1 w-full min-w-0">
-                                          <div className="flex items-center gap-2 flex-wrap min-w-0">
-                                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase shrink-0 ${
-                                              item.type === 'email' ? 'bg-blue-500/20 text-blue-400' : item.type === 'ip' ? 'bg-amber-500/20 text-amber-400' : 'bg-rose-500/20 text-rose-400'
-                                            }`}>
-                                              {item.type}
-                                            </span>
-                                            <span className="text-xs font-bold font-mono text-white break-all min-w-0">{item.value}</span>
-                                          </div>
-                                          <div className="text-[10px] text-slate-400 break-words">
-                                            Reason: <span className="italic break-all">{item.reason}</span>
-                                          </div>
-                                          <div className="text-[9px] text-slate-500">
-                                            Banned on: {new Date(item.created_at || item.createdAt || Date.now()).toLocaleString()}
-                                          </div>
-                                        </div>
-                                        <button
-                                          onClick={async () => {
-                                            if (!confirm("Are you sure you want to unblock this entry?")) return;
-                                            try {
-                                              const res = await callApi({
-                                                action: 'removeFromBlacklist',
-                                                id: item.id
-                                              });
-                                              if (res.success) {
-                                                addNotification("Entity successfully unblocked.");
-                                                fetchSecurityData();
-                                                fetchRegisteredUsers();
-                                              }
-                                            } catch (e) {
-                                              console.error(e);
-                                            }
-                                          }}
-                                          className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white transition cursor-pointer shrink-0 self-start sm:self-auto"
-                                        >
-                                          Unblock
-                                        </button>
-                                      </div>
-                                    ))
-                                  )}
-                                </div>
                               </div>
                             </div>
                           ) : null
