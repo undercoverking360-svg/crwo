@@ -2744,9 +2744,15 @@ export default function App() {
 
       {/* ADMIN PENDING REQUESTS TELEMETRY — FULL SCREEN OVERLAY */}
       {isAdminNotificationOpen && (
-        <div className="fixed inset-0 z-[99999] bg-slate-950 flex flex-col font-sans text-slate-200 overflow-hidden">
+        <div 
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 9999999, backgroundColor: '#020617' }}
+          className="fixed inset-0 z-[99999] flex flex-col font-sans text-slate-200 overflow-hidden"
+        >
           {/* Full-screen header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-950/95 backdrop-blur-sm shrink-0">
+          <div 
+            style={{ backgroundColor: '#0b0f19' }}
+            className="flex items-center justify-between px-5 py-4 border-b border-slate-800 shrink-0"
+          >
             <div className="flex items-center gap-3">
               <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping"></span>
               <div>
@@ -2774,7 +2780,10 @@ export default function App() {
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
+          <div 
+            style={{ backgroundColor: '#020617' }}
+            className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar"
+          >
             <div className="max-w-2xl mx-auto space-y-3">
               {adminPendingRequests.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 space-y-4 text-center">
@@ -2821,7 +2830,10 @@ export default function App() {
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-5 py-3 border-t border-slate-800/60 bg-slate-950/95 text-[9px] text-slate-600 text-center">
+          <div 
+            style={{ backgroundColor: '#0b0f19' }}
+            className="shrink-0 px-5 py-3 border-t border-slate-800/60 text-[9px] text-slate-500 text-center"
+          >
             Tap any request card to auto-select the member and jump to the relevant module.
           </div>
         </div>
@@ -2829,7 +2841,10 @@ export default function App() {
 
       {/* USER NOTIFICATION TELEMETRY MODAL */}
       {isUserNotificationOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fadeIn">
+        <div 
+          style={{ zIndex: 9999999 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fadeIn"
+        >
           <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-950 p-5 shadow-2xl space-y-4 font-sans text-slate-200">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
               <div className="flex items-center gap-2">
@@ -2899,7 +2914,7 @@ export default function App() {
       )}
 
       {/* HEADER SECTION */}
-      <header className={`sticky top-0 z-40 border-b backdrop-blur-md transition-all duration-300 ${darkMode ? 'bg-slate-950/90 border-slate-800/80' : 'bg-white/90 border-slate-200'}`}>
+      <header className={`sticky top-0 z-40 border-b backdrop-blur-md transition-all duration-300 ${isAdminNotificationOpen ? 'hidden' : ''} ${darkMode ? 'bg-slate-950/90 border-slate-800/80' : 'bg-white/90 border-slate-200'}`}>
         {/* Mobile Header (Centered Logo + Clean Row Structure) */}
         <div className="flex flex-col gap-2.5 md:hidden px-3.5 py-2.5 w-full">
           {/* Row 1: Centered Logo & Title */}
@@ -3398,7 +3413,7 @@ export default function App() {
       </header>
 
       {/* DASHBOARD LAYOUT */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
+      <div className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${isAdminNotificationOpen ? 'hidden' : ''}`}>
         
         {/* MOBILE NAVIGATION BAR (horizontal scrollable, centered if admin app / single tab) */}
         <div className={`lg:hidden w-full overflow-x-auto flex ${isNativeAdminApp || navItems.length === 1 ? 'justify-center' : ''} gap-2 pb-3 mb-5 shrink-0 select-none`}>
@@ -8769,7 +8784,10 @@ export default function App() {
               )}
               {/* TRAFFIC GATE & PORTAL VIEW (STANDALONE FULLSCREEN OVERLAY) */}
               {trafficPortalOpen && (
-                <div className="fixed inset-0 z-50 bg-slate-950 text-slate-100 flex flex-col overflow-y-auto p-4 md:p-8 font-sans">
+                <div 
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 9999999, backgroundColor: '#020617' }}
+                  className="fixed inset-0 z-50 text-slate-100 flex flex-col overflow-y-auto p-4 md:p-8 font-sans"
+                >
                   {/* CLOSE BUTTON AT TOP */}
                   <div className="absolute top-4 right-4 z-50">
                     <button 
@@ -8866,11 +8884,11 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Portal 8 buttons navigation bar */}
-                    <div className="grid grid-cols-2 md:grid-cols-8 gap-2">
+                    {/* Portal 10 buttons navigation bar — horizontal scrollable, no overlap */}
+                    <div className="flex flex-nowrap overflow-x-auto gap-2 pb-2 custom-scrollbar">
                       <button
                         onClick={() => setTrafficTab('database')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'database'
                             ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border-emerald-500 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8880,7 +8898,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('loss_fund')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'loss_fund'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8890,7 +8908,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('turnover')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'turnover'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8900,7 +8918,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('holders')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'holders'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8910,7 +8928,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('manager_comm')}
-                        className={`px-3 py-3.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'manager_comm'
                             ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8920,7 +8938,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('head_comm')}
-                        className={`px-3 py-3.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[10px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'head_comm'
                             ? 'bg-teal-500/20 border-teal-400 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8930,7 +8948,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('logs')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'logs'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)]'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8940,7 +8958,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('admin_console')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'admin_console'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)] font-bold'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8950,7 +8968,7 @@ export default function App() {
                       </button>
                       <button
                         onClick={() => setTrafficTab('video_log')}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'video_log'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)] font-bold'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
@@ -8963,7 +8981,7 @@ export default function App() {
                           setTrafficTab('community');
                           fetchCommunityLinks();
                         }}
-                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition cursor-pointer ${
+                        className={`px-3 py-3.5 rounded-xl border text-[11px] font-bold uppercase tracking-wider font-orbitron text-center transition shrink-0 whitespace-nowrap cursor-pointer ${
                           trafficTab === 'community'
                             ? 'bg-teal-500/20 border-teal-500 text-teal-400 shadow-[0_0_12px_rgba(20,184,166,0.2)] font-bold'
                             : 'bg-slate-900/40 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
