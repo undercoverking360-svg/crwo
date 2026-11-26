@@ -10639,13 +10639,20 @@ export default function App() {
                       localStorage.setItem('crwo_device_id', devId);
                     }
                     setDeviceUuid(devId);
-                    // Fetch IP (best-effort)
+                    // Fetch IP (fast non-blocking best-effort)
                     let ip = clientIpAddress || '';
                     if (!ip) {
-                      try { const ipRes = await fetch('https://api.ipify.org?format=json'); const ipJson = await ipRes.json(); ip = ipJson.ip || ''; } catch {}
+                      try {
+                        const ipRes = await Promise.race([
+                          fetch('https://api.ipify.org?format=json'),
+                          new Promise<Response>((_, reject) => setTimeout(() => reject(new Error('timeout')), 500))
+                        ]);
+                        const ipJson = await ipRes.json();
+                        ip = ipJson.ip || '';
+                      } catch {}
                       if (ip) setClientIpAddress(ip);
                     }
-                    // Blacklist check FIRST for both Login and Signup
+                    // Blacklist check FIRST for both Login and Signup (Instant 0ms local check)
                     const checkRes = await callApi({ action: 'checkBlacklist', email: authEmail, deviceUuid: devId, ipAddress: ip });
                     if (checkRes && checkRes.isBlocked) {
                       setIsBlocked(true);
@@ -10659,20 +10666,20 @@ export default function App() {
                       const res = await callApi({ action: 'login', email: authEmail, password: authPassword });
                       if (res.success) {
                         addNotification(`Welcome back, ${res.name || authEmail}!`);
-                        // Log device in background
-                        callApi({ action: 'logUserDevice', email: res.email, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
                         setUserEmail(res.email);
                         setUserName(res.name || '');
                         setUserId(res.userId || '');
                         setUserJoinedDate(res.joinedDate || '');
-                        fetchIdCardDetails(res.email);
-                        fetchUserCouriers(res.email);
                         setLoginOpen(false);
                         setAuthEmail('');
                         setAuthPassword('');
+                        setActiveTab('idCard');
+                        // Asynchronous non-blocking background syncs
+                        callApi({ action: 'logUserDevice', email: res.email, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
+                        fetchIdCardDetails(res.email);
+                        fetchUserCouriers(res.email);
                         fetchUserLedger(res.email);
                         fetchUserBankDetails(res.email);
-                        setActiveTab('idCard');
                       } else {
                         addNotification(res.message || 'Login failed. Invalid credentials.');
                       }
@@ -10685,20 +10692,20 @@ export default function App() {
                       const res = await callApi({ action: 'signup', email: authEmail, password: authPassword, name: authName });
                       if (res.success) {
                         addNotification('Signup successful! Auto-logging in...');
-                        // Log device in background
-                        callApi({ action: 'logUserDevice', email: authEmail, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
                         setUserEmail(authEmail);
                         setUserName(authName);
                         setUserId(res.userId);
                         setUserJoinedDate(new Date().toLocaleDateString());
-                        fetchIdCardDetails(authEmail);
                         setLoginOpen(false);
                         setAuthEmail('');
                         setAuthPassword('');
                         setAuthName('');
+                        setActiveTab('idCard');
+                        // Asynchronous non-blocking background syncs
+                        callApi({ action: 'logUserDevice', email: authEmail, deviceUuid: devId, ipAddress: ip, userAgent: navigator.userAgent }).catch(() => {});
+                        fetchIdCardDetails(authEmail);
                         fetchUserLedger(authEmail);
                         fetchUserBankDetails(authEmail);
-                        setActiveTab('idCard');
                       } else {
                         addNotification(res.message || 'Signup failed.');
                       }

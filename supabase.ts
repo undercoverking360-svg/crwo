@@ -5,7 +5,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_iu-jlMAbcazlzAVvN2JoeQ_cGNIyryO";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Helper to sanitize strings like Apps Script does
+// Helper to sanitize strings
 function safeStr(val: any): string {
   return (val !== null && val !== undefined) ? String(val).trim() : "";
 }
@@ -14,7 +14,17 @@ function safeLower(val: any): string {
   return safeStr(val).toLowerCase();
 }
 
+// Timeout wrapper for secondary Supabase sync so unreachable host never hangs
+const withTimeout = (promise: Promise<any>, ms = 2500) => {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase timeout")), ms))
+  ]);
+};
+
+// ----------------------------------------------------
 // Persistent Storage Helpers for Security & Blacklist
+// ----------------------------------------------------
 const getLocalBlacklist = (): any[] => {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('crwo_security_blacklist') : null;
@@ -49,819 +59,53 @@ const saveLocalDevices = (list: any[]) => {
   } catch {}
 };
 
-/**
- * Custom Supabase Client Wrapper
- * Intercepts actions from callApi, handles them with sub-second response times using Supabase,
- * and maintains Google Apps Script sheets as a background write-through sync.
- */
-export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promise<any>): Promise<any> => {
+const DEFAULT_COMMUNITY_LINKS = [
+  { id: 1, slNo: 1, platform: 'Discord', title: 'Official Discord Server', link: 'https://discord.gg/KQbGpWSux3', logo: 'discord' },
+  { id: 2, slNo: 2, platform: 'Telegram', title: 'CRWO Official Updates', link: 'https://t.me/crwo_official', logo: 'telegram' }
+];
+
+const getLocalCommunityLinks = (): any[] => {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('crwo_community_links_cache') : null;
+    return raw ? JSON.parse(raw) : DEFAULT_COMMUNITY_LINKS;
+  } catch {
+    return DEFAULT_COMMUNITY_LINKS;
+  }
+};
+
+const saveLocalCommunityLinks = (list: any[]) => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('crwo_community_links_cache', JSON.stringify(list));
+    }
+  } catch {}
+};
+
+// ----------------------------------------------------
+// SECONDARY FAST SYNC (Background Write to Supabase)
+// Non-blocking write-through sync to Supabase tables.
+// ----------------------------------------------------
+async function syncToSupabase(data: any): Promise<void> {
   const action = data ? data.action : null;
-  if (!action) return { success: false, message: "No action provided" };
+  if (!action) return;
 
   try {
-    // ----------------------------------------------------
-    // READ ACTIONS (Fetched directly from Supabase in 30ms)
-    // ----------------------------------------------------
-
-    if (action === "login") {
-      const email = safeLower(data.email);
-      const password = safeStr(data.password);
-
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', email)
-        .eq('password', password);
-
-      if (error) throw error;
-
-      if (users && users.length > 0) {
-        const user = users[0];
-        return {
-          success: true,
-          message: "Login successful!",
-          email: user.email,
-          name: user.name,
-          userId: user.user_id,
-          joinedDate: user.joined_date
-        };
-      } else {
-        return { success: false, message: "Invalid email or password." };
-      }
-    }
-
-    else if (action === "getUserList") {
-      const { data: users, error } = await supabase
-        .from('users')
-        .select('email, user_id, name, joined_date');
-
-      if (error) throw error;
-
-      // Also join id_cards to get designation, state, district
-      const { data: idCards } = await supabase
-        .from('id_cards')
-        .select('email, designation, state, district, city, joining_date');
-
-      const idCardMap = new Map<string, any>();
-      if (idCards) {
-        idCards.forEach((ic: any) => {
-          if (ic.email) idCardMap.set(safeLower(ic.email), ic);
-        });
-      }
-
-      const richMembers = (users || []).map((u: any) => {
-        const email = safeStr(u.email);
-        const card = idCardMap.get(safeLower(email)) || {};
-        return {
-          email,
-          userId: safeStr(u.user_id) || 'CRWO-MEM',
-          name: safeStr(u.name) || 'Member',
-          joinedDate: safeStr(u.joined_date) || safeStr(card.joining_date) || '2026-01-01',
-          designation: safeStr(card.designation) || 'HOLDER',
-          state: safeStr(card.state) || 'N/A',
-          district: safeStr(card.district) || safeStr(card.city) || 'N/A'
-        };
-      }).filter(m => Boolean(m.email));
-
-      return {
-        success: true,
-        data: richMembers.map(m => m.email),
-        members: richMembers
-      };
-    }
-
-    else if (action === "getPendingRequests") {
-      try {
-        const [advRes, compRes, refRes] = await Promise.all([
-          supabase.from('advances').select('*').ilike('claim_status', '%pending%'),
-          supabase.from('complaints').select('*').in('status', ['PENDING', 'OPEN', 'pending', 'open']),
-          supabase.from('referrals').select('*').ilike('claim_status', '%pending%')
-        ]);
-
-        const list: any[] = [];
-        if (advRes.data) {
-          advRes.data.forEach((a: any) => {
-            list.push({
-              id: `adv-${a.id || a.sl_no}`,
-              type: 'advance',
-              title: 'Advance Claim Request',
-              email: safeStr(a.email),
-              userId: safeStr(a.od_user_id) || 'USER',
-              date: safeStr(a.date),
-              time: safeStr(a.time),
-              amount: safeStr(a.requested_amount),
-              details: `Bank: ${safeStr(a.bank_name)} • Amount: ₹${safeStr(a.requested_amount)} • Reason: ${safeStr(a.purpose)}`,
-              status: 'PENDING',
-              moduleTab: 'advance'
-            });
-          });
-        }
-        if (compRes.data) {
-          compRes.data.forEach((c: any) => {
-            list.push({
-              id: `comp-${c.id || c.sl_no || c.ticket_id}`,
-              type: 'complain',
-              title: `Support Ticket: ${safeStr(c.subject || 'Ticket')}`,
-              email: safeStr(c.email),
-              userId: safeStr(c.od_user_id) || 'USER',
-              date: safeStr(c.date),
-              time: safeStr(c.time),
-              amount: '',
-              details: `Subject: ${safeStr(c.subject)} • ${safeStr(c.description)}`,
-              status: 'PENDING',
-              moduleTab: 'complain'
-            });
-          });
-        }
-        if (refRes.data) {
-          refRes.data.forEach((r: any) => {
-            list.push({
-              id: `ref-${r.id || r.sl_no}`,
-              type: 'referral',
-              title: 'Referral Bonus Claim',
-              email: safeStr(r.email),
-              userId: safeStr(r.user_id) || 'USER',
-              date: safeStr(r.date),
-              time: safeStr(r.time),
-              amount: '',
-              details: `Referral: ${safeStr(r.referral_name)} • Tier: ${safeStr(r.referral_tier)}`,
-              status: 'PENDING',
-              moduleTab: 'referral'
-            });
-          });
-        }
-        return {
-          success: true,
-          data: list
-        };
-      } catch (e) {
-        console.error("Error fetching pending requests:", e);
-        return { success: true, data: [] };
-      }
-    }
-
-    else if (action === "getLedger") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: [] };
-
-      const { data: txs, error } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('email', email)
-        .order('sl_no', { ascending: true });
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (txs || []).map(t => ({
-          slNo: t.sl_no,
-          date: safeStr(t.date),
-          time: safeStr(t.time),
-          accountName: safeStr(t.account_name),
-          turnover: Number(t.turnover) || 0,
-          commission: Number(t.commission) || 0,
-          advance: Number(t.advance) || 0,
-          penalty: Number(t.penalty) || 0,
-          totalPayable: Number(t.total_payable) || 0,
-          status: safeStr(t.status),
-          dateOfPayment: safeStr(t.date_of_payment)
-        }))
-      };
-    }
-
-    else if (action === "getBankDetails") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: [] };
-
-      const { data: banks, error } = await supabase
-        .from('bank_details')
-        .select('*')
-        .eq('email', email)
-        .order('sl_no', { ascending: true });
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (banks || []).map(b => ({
-          email: safeStr(b.email),
-          slNo: b.sl_no,
-          nameOfHolder: safeStr(b.name_of_holder),
-          bankName: safeStr(b.bank_name),
-          acNo: safeStr(b.ac_no),
-          ifscCode: safeStr(b.ifsc_code),
-          atmCardNo: safeStr(b.atm_card_no),
-          expiry: safeStr(b.expiry),
-          cvv: safeStr(b.cvv),
-          atmPin: safeStr(b.atm_pin),
-          netbankingUserId: safeStr(b.netbanking_user_id),
-          netbankingLoginPass: safeStr(b.netbanking_login_pass),
-          netbankingTransactionPass: safeStr(b.netbanking_transaction_pass),
-          mobileBankingLoginPin: safeStr(b.mobile_banking_login_pin),
-          mobileBankingTPin: safeStr(b.mobile_banking_tpin),
-          upiPin: safeStr(b.upi_pin),
-          remarks: safeStr(b.remarks),
-          accountStatus: safeStr(b.account_status) || "ACTIVE"
-        }))
-      };
-    }
-
-    else if (action === "getCheques") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: [] };
-
-      const { data: cheques, error } = await supabase
-        .from('cheques')
-        .select('*')
-        .eq('email', email)
-        .order('sl_no', { ascending: true });
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (cheques || []).map(c => ({
-          email: safeStr(c.email),
-          slNo: c.sl_no,
-          date: safeStr(c.date),
-          time: safeStr(c.time),
-          payTo: safeStr(c.pay_to),
-          bankBreakdown: safeStr(c.bank_breakdown),
-          statusNotes: safeStr(c.status_notes),
-          amountWords: safeStr(c.amount_words),
-          amountNumeric: safeStr(c.amount_numeric),
-          micrCode: safeStr(c.micr_code)
-        }))
-      };
-    }
-
-    else if (action === "getAdvances") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: [] };
-
-      const { data: advances, error } = await supabase
-        .from('advances')
-        .select('*')
-        .eq('email', email)
-        .order('sl_no', { ascending: false }); // Apps script does reverse()
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (advances || []).map(a => ({
-          email: safeStr(a.email),
-          slNo: a.sl_no,
-          date: safeStr(a.date),
-          time: safeStr(a.time),
-          odUserId: safeStr(a.od_user_id),
-          bankName: safeStr(a.bank_name),
-          totalTurnover: safeStr(a.total_turnover),
-          requestedAmount: safeStr(a.requested_amount),
-          purpose: safeStr(a.purpose),
-          claimStatus: safeStr(a.claim_status),
-          paymentDate: safeStr(a.payment_date),
-          paymentTime: safeStr(a.payment_time),
-          paymentUtr: safeStr(a.payment_utr),
-          rejectionReason: safeStr(a.rejection_reason)
-        }))
-      };
-    }
-
-    else if (action === "getComplaints") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: [] };
-
-      const { data: complaints, error } = await supabase
-        .from('complaints')
-        .select('*')
-        .eq('email', email)
-        .order('sl_no', { ascending: false }); // Apps script does reverse()
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (complaints || []).map(c => ({
-          email: safeStr(c.email),
-          ticketId: safeStr(c.ticket_id),
-          slNo: c.sl_no,
-          date: safeStr(c.date),
-          time: safeStr(c.time),
-          odUserId: safeStr(c.od_user_id),
-          subject: safeStr(c.subject),
-          description: safeStr(c.description),
-          status: safeStr(c.status),
-          adminReply: safeStr(c.admin_reply),
-          replyDateTime: safeStr(c.reply_date_time)
-        }))
-      };
-    }
-
-    else if (action === "getReferrals") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: [] };
-
-      const { data: referrals, error } = await supabase
-        .from('referrals')
-        .select('*')
-        .eq('email', email)
-        .order('sl_no', { ascending: false }); // Apps script does reverse()
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (referrals || []).map(r => ({
-          email: safeStr(r.email),
-          slNo: r.sl_no,
-          date: safeStr(r.date),
-          time: safeStr(r.time),
-          odUserId: safeStr(r.od_user_id),
-          referralName: safeStr(r.referral_name),
-          referralTier: safeStr(r.referral_tier),
-          registeredGmail: safeStr(r.registered_gmail),
-          reason: safeStr(r.reason),
-          status: safeStr(r.status) || "PENDING",
-          refStatus: safeStr(r.ref_status) || "INACTIVE"
-        }))
-      };
-    }
-
-    else if (action === "getKyc") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: null };
-
-      const { data: kycs, error } = await supabase
-        .from('kyc')
-        .select('*')
-        .eq('email', email);
-
-      if (error) throw error;
-
-      if (kycs && kycs.length > 0) {
-        const k = kycs[0];
-        return {
-          success: true,
-          data: {
-            email: safeStr(k.email),
-            date: safeStr(k.date),
-            time: safeStr(k.time),
-            userId: safeStr(k.user_id),
-            fullName: safeStr(k.full_name),
-            phoneNumber: safeStr(k.phone_number),
-            aadharNumber: safeStr(k.aadhar_number),
-            panNumber: safeStr(k.pan_number),
-            fatherName: safeStr(k.father_name),
-            motherName: safeStr(k.mother_name),
-            state: safeStr(k.state),
-            district: safeStr(k.district),
-            cityVillage: safeStr(k.city_village),
-            street: safeStr(k.street),
-            houseNameNo: safeStr(k.house_name_no),
-            landmark: safeStr(k.landmark),
-            pinCode: safeStr(k.pin_code),
-            bankHolderName: safeStr(k.bank_holder_name),
-            bankAcNo: safeStr(k.bank_ac_no),
-            bankIfsc: safeStr(k.bank_ifsc),
-            status: safeStr(k.status) || "PENDING",
-            rejectionReason: safeStr(k.rejection_reason)
-          }
-        };
-      } else {
-        return { success: true, data: null };
-      }
-    }
-
-    else if (action === "getIdCard") {
-      const email = safeLower(data.email);
-      if (!email) return { success: true, data: null, upline: "NA" };
-
-      // Get ID Card
-      const { data: idcards, error } = await supabase
-        .from('id_cards')
-        .select('*')
-        .eq('email', email);
-
-      if (error) throw error;
-
-      let foundRecord = null;
-      if (idcards && idcards.length > 0) {
-        const idc = idcards[0];
-        foundRecord = {
-          email: safeStr(idc.email),
-          idNo: safeStr(idc.id_no),
-          photo: safeStr(idc.photo),
-          joiningDate: safeStr(idc.joining_date),
-          leavingDate: safeStr(idc.leaving_date),
-          dob: safeStr(idc.dob),
-          designation: safeStr(idc.designation),
-          city: safeStr(idc.city),
-          district: safeStr(idc.district),
-          state: safeStr(idc.state),
-          pinCode: safeStr(idc.pin_code)
-        };
-      }
-
-      // Compute upline
-      let upline = "NA";
-      const { data: refs, error: refError } = await supabase
-        .from('referrals')
-        .select('*')
-        .eq('registered_gmail', email);
-
-      if (!refError && refs && refs.length > 0) {
-        const uplineEmail = safeLower(refs[0].email);
-        const { data: uplineUsers, error: userError } = await supabase
-          .from('users')
-          .select('*')
-          .eq('email', uplineEmail);
-
-        if (!userError && uplineUsers && uplineUsers.length > 0) {
-          upline = `${safeStr(uplineUsers[0].name)} (${safeStr(uplineUsers[0].user_id)})`;
-        } else {
-          upline = uplineEmail;
-        }
-      }
-
-      return {
-        success: true,
-        data: foundRecord,
-        upline: upline
-      };
-    }
-
-    else if (action === "getCouriers") {
-      const email = safeLower(data.email);
-      let query = supabase.from('couriers').select('*');
-      if (email !== "all") {
-        query = query.eq('email', email);
-      }
-      const { data: couriers, error } = await query.order('id', { ascending: false });
-
-      if (error) throw error;
-
-      return {
-        success: true,
-        data: (couriers || []).map(c => ({
-          email: safeStr(c.email),
-          slNo: c.sl_no,
-          batchNo: safeStr(c.batch_no),
-          departureDate: safeStr(c.departure_date),
-          departuredBy: safeStr(c.departured_by),
-          simType: safeStr(c.sim_type),
-          simNo: safeStr(c.sim_no),
-          totalAc: safeStr(c.total_ac),
-          atmCards: safeStr(c.atm_cards),
-          registeredGmail: safeStr(c.registered_gmail),
-          gmailPass: safeStr(c.gmail_pass),
-          platform: safeStr(c.platform),
-          trackingNo: safeStr(c.tracking_no),
-          receiverPhone: safeStr(c.receiver_phone),
-          dispatchingPinCode: safeStr(c.dispatching_pin_code),
-          address: safeStr(c.address),
-          receivedBy: safeStr(c.received_by),
-          receivingDate: safeStr(c.receiving_date),
-          receivingPinCode: safeStr(c.receiving_pin_code),
-          receivingAddress: safeStr(c.receiving_address),
-          batchReceivedStatus: safeStr(c.batch_received_status) || "PENDING",
-          batchReturnedDate: safeStr(c.batch_returned_date),
-          batchReturnedUserConfirmed: safeStr(c.batch_returned_user_confirmed)
-        }))
-      };
-    }
-
-    else if (action === "getAdminStats") {
-      const { count: activeMembers, error: uErr } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
-
-      if (uErr) throw uErr;
-
-      const { data: txs, error: tErr } = await supabase
-        .from('transactions')
-        .select('turnover, status');
-
-      if (tErr) throw tErr;
-
-      let totalWelfareFund = 0;
-      let paidCount = 0;
-      let totalCount = txs ? txs.length : 0;
-
-      if (txs) {
-        for (const t of txs) {
-          const status = safeStr(t.status).toUpperCase();
-          const amt = Number(t.turnover) || 0;
-          if (status === "PAID") {
-            totalWelfareFund += amt;
-            paidCount++;
-          }
-        }
-      }
-
-      const rate = totalCount > 0 ? ((paidCount / totalCount) * 100) : 100.0;
-
-      return {
-        success: true,
-        activeMembers: activeMembers || 0,
-        totalWelfareFund: totalWelfareFund,
-        clearingRate: rate.toFixed(1) + "%"
-      };
-    }
-
-    else if (action === "searchUserByEmail") {
-      const searchEmail = safeLower(data.searchEmail);
-      const { data: users, error: uErr } = await supabase
-        .from('users')
-        .select('*')
-        .eq('email', searchEmail);
-
-      if (uErr) throw uErr;
-
-      if (users && users.length > 0) {
-        const foundUser = users[0];
-        let userRefTier = "FIRST CHAIN (2.5%)";
-        let userRefStatus = "ACTIVE";
-
-        const { data: refs, error: rErr } = await supabase
-          .from('referrals')
-          .select('referral_tier, ref_status')
-          .eq('registered_gmail', searchEmail);
-
-        if (!rErr && refs && refs.length > 0) {
-          userRefTier = safeStr(refs[0].referral_tier) || userRefTier;
-          userRefStatus = safeStr(refs[0].ref_status) || userRefStatus;
-        }
-
-        return {
-          success: true,
-          userData: {
-            userId: foundUser.user_id,
-            name: foundUser.name,
-            email: foundUser.email,
-            joinedDate: foundUser.joined_date,
-            tier: userRefTier,
-            status: userRefStatus
-          }
-        };
-      } else {
-        return { success: false, message: "No user found with Gmail ID: " + searchEmail };
-      }
-    }
-
-    else if (action === "checkBlacklist") {
-      const email = safeLower(data.email);
-      const deviceUuid = safeStr(data.deviceUuid);
-      const ipAddress = safeStr(data.ipAddress);
-
-      let records = getLocalBlacklist();
-      try {
-        const { data: dbRec, error } = await supabase
-          .from('crwo_blacklist')
-          .select('*');
-        if (!error && dbRec && dbRec.length > 0) {
-          records = dbRec;
-          saveLocalBlacklist(records);
-        }
-      } catch (e) {}
-
-      const matched = (records || []).find((r: any) => {
-        const val = safeStr(r.value).trim().toLowerCase();
-        if (r.type === 'email' && email && val === safeStr(email).trim().toLowerCase()) return true;
-        if (r.type === 'ip' && ipAddress && val === safeStr(ipAddress).trim().toLowerCase()) return true;
-        if (r.type === 'device' && deviceUuid && val === safeStr(deviceUuid).trim().toLowerCase()) return true;
-        return false;
-      });
-
-      if (matched) {
-        return { success: true, isBlocked: true, reason: matched.reason || "Unusual activity detected" };
-      }
-      return { success: true, isBlocked: false };
-    }
-
-    else if (action === "getBlacklist") {
-      let records: any[] = getLocalBlacklist();
-      try {
-        const { data: dbRec, error } = await supabase
-          .from('crwo_blacklist')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (!error && dbRec && Array.isArray(dbRec)) {
-          records = dbRec;
-          saveLocalBlacklist(records);
-        }
-      } catch (e) {}
-      return { success: true, data: records || [] };
-    }
-
-    else if (action === "getUserDevices") {
-      let devices: any[] = getLocalDevices();
-      try {
-        const { data: dbDev, error } = await supabase
-          .from('crwo_user_devices')
-          .select('*')
-          .order('last_seen', { ascending: false });
-        if (!error && dbDev && Array.isArray(dbDev)) {
-          devices = dbDev;
-          saveLocalDevices(devices);
-        }
-      } catch (e) {}
-      return { success: true, data: devices || [] };
-    }
-
-    else if (action === "logUserDevice" || action === "registerDevice") {
-      const email = safeLower(data.email);
-      const deviceUuid = safeStr(data.deviceUuid);
-      const ipAddress = safeStr(data.ipAddress);
-      const userAgent = safeStr(data.userAgent);
-
-      if (!email || !deviceUuid) return { success: false, message: "Missing params" };
-
-      const curDevices = getLocalDevices();
-      const existingIdx = curDevices.findIndex(d => d.email === email && d.device_uuid === deviceUuid);
-      const newDevEntry = {
-        id: existingIdx >= 0 ? curDevices[existingIdx].id : Date.now(),
-        email,
-        device_uuid: deviceUuid,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-        last_seen: new Date().toISOString()
-      };
-      if (existingIdx >= 0) {
-        curDevices[existingIdx] = newDevEntry;
-      } else {
-        curDevices.unshift(newDevEntry);
-      }
-      saveLocalDevices(curDevices);
-
-      try {
-        await supabase
-          .from('crwo_user_devices')
-          .upsert({
-            email,
-            device_uuid: deviceUuid,
-            ip_address: ipAddress,
-            user_agent: userAgent,
-            last_seen: new Date().toISOString()
-          }, { onConflict: 'email,device_uuid' });
-      } catch (e) {}
-
-      return { success: true, message: "Logged device info" };
-    }
-
-    else if (action === "addToBlacklist" || action === "addBlacklist") {
-      const type = safeStr(data.type);
-      const value = safeStr(data.value).toLowerCase();
-      const reason = safeStr(data.reason || "Unusual activity / Multi-account link");
-
-      if (!type || !value) return { success: false, message: "Type and value required" };
-
-      const curList = getLocalBlacklist();
-      const existingIdx = curList.findIndex(b => safeStr(b.value).toLowerCase() === value);
-      const newEntry = {
-        id: existingIdx >= 0 ? curList[existingIdx].id : Date.now(),
-        type,
-        value,
-        reason,
-        created_at: new Date().toISOString()
-      };
-      if (existingIdx >= 0) {
-        curList[existingIdx] = newEntry;
-      } else {
-        curList.unshift(newEntry);
-      }
-      saveLocalBlacklist(curList);
-
-      try {
-        await supabase
-          .from('crwo_blacklist')
-          .upsert({
-            type,
-            value,
-            reason,
-            created_at: new Date().toISOString()
-          }, { onConflict: 'value' });
-      } catch (e) {}
-
-      return { success: true, message: `Successfully blacklisted ${type}: ${value}` };
-    }
-
-    else if (action === "removeFromBlacklist" || action === "removeBlacklist") {
-      const id = Number(data.id);
-      const curList = getLocalBlacklist();
-      const updatedList = curList.filter(b => Number(b.id) !== id);
-      saveLocalBlacklist(updatedList);
-
-      try {
-        await supabase
-          .from('crwo_blacklist')
-          .delete()
-          .eq('id', id);
-      } catch (e) {}
-
-      return { success: true, message: "Successfully unblocked target entry" };
-    }
-
-    else if (action === "getCommunityLinks") {
-      const { data: records, error } = await supabase
-        .from('traffic')
-        .select('*')
-        .eq('main_party', '__COMMUNITY__')
-        .order('id', { ascending: true });
-
-      if (error) throw error;
-      return {
-        success: true,
-        data: (records || []).map((r: any, idx: number) => ({
-          id: r.id,
-          slNo: r.sl_no || (idx + 1),
-          platform: safeStr(r.sub_party),
-          title: safeStr(r.holder_name),
-          link: safeStr(r.ac_name),
-          logo: safeStr(r.remarks),
-          createdAt: safeStr(r.created_at)
-        }))
-      };
-    }
-
-    else if (action === "getTraffic") {
-      const { data: traffic, error } = await supabase
-        .from('traffic')
-        .select('*')
-        .neq('main_party', '__COMMUNITY__')
-        .order('sl_no', { ascending: true });
-
-      if (error) throw error;
-      return {
-        success: true,
-        data: (traffic || []).map(t => ({
-          slNo: t.sl_no,
-          date: safeStr(t.date),
-          mainParty: safeStr(t.main_party),
-          subParty: safeStr(t.sub_party),
-          lossFund: Number(t.loss_fund) || 0,
-          lossAddOn: Number(t.loss_add_on) || 0,
-          currentLossFund: Number(t.current_loss_fund) || 0,
-          fundToManaged: Number(t.fund_to_managed) || 0,
-          holderName: safeStr(t.holder_name),
-          acName: safeStr(t.ac_name),
-          totalTurnover: Number(t.total_turnover) || 0,
-          remainingTurnover: Number(t.remaining_turnover) || 0,
-          margin74: Number(t.margin74) || 0,
-          margin5: Number(t.margin5) || 0,
-          margin25: Number(t.margin25) || 0,
-          margin01: Number(t.margin01) || 0,
-          margin15: Number(t.margin15) || 0,
-          margin70: Number(t.margin70) || 0,
-          status74: safeStr(t.status74) || 'UNPAID',
-          status5: safeStr(t.status5) || 'UNPAID',
-          status25: safeStr(t.status25) || 'UNPAID',
-          status01: safeStr(t.status01) || 'UNPAID',
-          status15: safeStr(t.status15) || 'UNPAID',
-          status70: safeStr(t.status70) || 'UNPAID',
-          remarks: safeStr(t.remarks)
-        }))
-      };
-    }
-
-    // ----------------------------------------------------
-    // WRITE ACTIONS (Dual-write to Supabase AND Apps Script)
-    // ----------------------------------------------------
-
-    let writeResponse: any = { success: false };
-
     if (action === "signup") {
       const email = safeLower(data.email);
       const password = safeStr(data.password);
       const name = safeStr(data.name);
-
-      // Check existence
-      const { data: exists, error: checkErr } = await supabase
-        .from('users')
-        .select('email')
-        .eq('email', email);
-
-      if (checkErr) throw checkErr;
-      if (exists && exists.length > 0) {
-        return { success: false, message: "Email is already registered!" };
-      }
-
-      const userId = "CRWO-" + Math.floor(1000 + Math.random() * 9000);
+      const userId = data.userId || ("CRWO-" + Math.floor(1000 + Math.random() * 9000));
       const joinedDate = new Date().toLocaleDateString();
 
-      const { error: insErr } = await supabase
-        .from('users')
-        .insert([{
+      await withTimeout(
+        supabase.from('users').upsert({
           user_id: userId,
           email: email,
           password: password,
           name: name,
           joined_date: joinedDate
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Signup successful!", userId };
+        }, { onConflict: 'email' })
+      );
     }
 
     else if (action === "addEntry") {
@@ -877,18 +121,13 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       const status = data.status || "UNPAID";
       const dateOfPayment = data.dateOfPayment || "-";
 
-      // Count entries
-      const { count, error: countErr } = await supabase
-        .from('transactions')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
-
-      if (countErr) throw countErr;
+      const { count } = await withTimeout(
+        supabase.from('transactions').select('*', { count: 'exact', head: true }).eq('email', email)
+      );
       const slNo = (count || 0) + 1;
 
-      const { error: insErr } = await supabase
-        .from('transactions')
-        .insert([{
+      await withTimeout(
+        supabase.from('transactions').insert([{
           email,
           sl_no: slNo,
           date,
@@ -901,10 +140,8 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
           total_payable: totalPayable,
           status,
           date_of_payment: dateOfPayment
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Entry successfully added to " + email };
+        }])
+      );
     }
 
     else if (action === "updateStatus") {
@@ -913,14 +150,12 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       const status = data.status || "PAID";
       const dateOfPayment = data.dateOfPayment || (status === "PAID" ? new Date().toLocaleDateString() : "-");
 
-      const { error: upErr } = await supabase
-        .from('transactions')
-        .update({ status, date_of_payment: dateOfPayment })
-        .eq('email', email)
-        .eq('sl_no', slNo);
-
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Transaction #" + slNo + " status updated to " + status };
+      await withTimeout(
+        supabase.from('transactions')
+          .update({ status, date_of_payment: dateOfPayment })
+          .eq('email', email)
+          .eq('sl_no', slNo)
+      );
     }
 
     else if (action === "addBankDetails") {
@@ -942,19 +177,15 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       const remarks = data.remarks || "";
       const accountStatus = data.accountStatus || "ACTIVE";
 
-      const { count, error: countErr } = await supabase
-        .from('bank_details')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
+      const { count } = await withTimeout(
+        supabase.from('bank_details').select('*', { count: 'exact', head: true }).eq('email', email)
+      );
+      const slNo = (count || 0) + 1;
 
-      if (countErr) throw countErr;
-      const serialNum = (count || 0) + 1;
-
-      const { error: insErr } = await supabase
-        .from('bank_details')
-        .insert([{
+      await withTimeout(
+        supabase.from('bank_details').insert([{
           email,
-          sl_no: serialNum,
+          sl_no: slNo,
           name_of_holder: nameOfHolder,
           bank_name: bankName,
           ac_no: acNo,
@@ -967,14 +198,12 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
           netbanking_login_pass: netbankingLoginPass,
           netbanking_transaction_pass: netbankingTransactionPass,
           mobile_banking_login_pin: mobileBankingLoginPin,
-          mobile_banking_tpin: mobileBankingTPin,
+          mobile_banking_t_pin: mobileBankingTPin,
           upi_pin: upiPin,
           remarks,
           account_status: accountStatus
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Bank Account #" + serialNum + " added successfully for " + email };
+        }])
+      );
     }
 
     else if (action === "updateBankStatus") {
@@ -982,348 +211,275 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       const slNo = parseInt(data.slNo);
       const accountStatus = data.accountStatus || "ACTIVE";
 
-      const { error: upErr } = await supabase
-        .from('bank_details')
-        .update({ account_status: accountStatus })
-        .eq('email', email)
-        .eq('sl_no', slNo);
-
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Bank account #" + slNo + " status updated to " + accountStatus };
+      await withTimeout(
+        supabase.from('bank_details')
+          .update({ account_status: accountStatus })
+          .eq('email', email)
+          .eq('sl_no', slNo)
+      );
     }
 
     else if (action === "updateBankDetails") {
       const email = safeLower(data.email);
       const slNo = parseInt(data.slNo);
-      const updateData: any = {};
-      if (data.nameOfHolder !== undefined) updateData.name_of_holder = data.nameOfHolder;
-      if (data.bankName !== undefined) updateData.bank_name = data.bankName;
-      if (data.acNo !== undefined) updateData.ac_no = data.acNo;
-      if (data.ifscCode !== undefined) updateData.ifsc_code = data.ifscCode;
-      if (data.atmCardNo !== undefined) updateData.atm_card_no = data.atmCardNo;
-      if (data.expiry !== undefined) updateData.expiry = data.expiry;
-      if (data.cvv !== undefined) updateData.cvv = data.cvv;
-      if (data.atmPin !== undefined) updateData.atm_pin = data.atmPin;
-      if (data.netbankingUserId !== undefined) updateData.netbanking_user_id = data.netbankingUserId;
-      if (data.netbankingLoginPass !== undefined) updateData.netbanking_login_pass = data.netbankingLoginPass;
-      if (data.netbankingTransactionPass !== undefined) updateData.netbanking_transaction_pass = data.netbankingTransactionPass;
-      if (data.mobileBankingLoginPin !== undefined) updateData.mobile_banking_login_pin = data.mobileBankingLoginPin;
-      if (data.mobileBankingTPin !== undefined) updateData.mobile_banking_tpin = data.mobileBankingTPin;
-      if (data.upiPin !== undefined) updateData.upi_pin = data.upiPin;
-      if (data.remarks !== undefined) updateData.remarks = data.remarks;
-      if (data.accountStatus !== undefined) updateData.account_status = data.accountStatus;
 
-      const { error: upErr } = await supabase
-        .from('bank_details')
-        .update(updateData)
-        .eq('email', email)
-        .eq('sl_no', slNo);
-
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Bank account #" + slNo + " updated successfully for " + email };
+      await withTimeout(
+        supabase.from('bank_details')
+          .update({
+            name_of_holder: data.nameOfHolder,
+            bank_name: data.bankName,
+            ac_no: data.acNo,
+            ifsc_code: data.ifscCode,
+            atm_card_no: data.atmCardNo,
+            expiry: data.expiry,
+            cvv: data.cvv,
+            atm_pin: data.atmPin,
+            netbanking_user_id: data.netbankingUserId,
+            netbanking_login_pass: data.netbankingLoginPass,
+            netbanking_transaction_pass: data.netbankingTransactionPass,
+            mobile_banking_login_pin: data.mobileBankingLoginPin,
+            mobile_banking_t_pin: data.mobileBankingTPin,
+            upi_pin: data.upiPin,
+            remarks: data.remarks,
+            account_status: data.accountStatus
+          })
+          .eq('email', email)
+          .eq('sl_no', slNo)
+      );
     }
 
     else if (action === "addCheque") {
       const email = safeLower(data.email);
+      const chequeNo = data.chequeNo || "";
+      const bankName = data.bankName || "";
+      const acNo = data.acNo || "";
+      const ifsc = data.ifsc || "";
+      const branch = data.branch || "";
       const date = data.date || new Date().toLocaleDateString();
-      const time = data.time || new Date().toLocaleTimeString();
-      const payTo = data.payTo || "";
-      const bankBreakdown = data.bankBreakdown || "";
-      const statusNotes = data.statusNotes || "";
-      const amountWords = data.amountWords || "";
-      const amountNumeric = data.amountNumeric || "0.00";
-      const micrCode = data.micrCode || "";
+      const amount = parseFloat(data.amount) || 0;
+      const payeeName = data.payeeName || "";
+      const status = data.status || "CLEARED";
+      const remarks = data.remarks || "";
 
-      const { count, error: countErr } = await supabase
-        .from('cheques')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
+      const { count } = await withTimeout(
+        supabase.from('cheques').select('*', { count: 'exact', head: true }).eq('email', email)
+      );
+      const slNo = (count || 0) + 1;
 
-      if (countErr) throw countErr;
-      const serialNum = (count || 0) + 1;
-
-      const { error: insErr } = await supabase
-        .from('cheques')
-        .insert([{
+      await withTimeout(
+        supabase.from('cheques').insert([{
           email,
-          sl_no: serialNum,
+          sl_no: slNo,
+          cheque_no: chequeNo,
+          bank_name: bankName,
+          ac_no: acNo,
+          ifsc,
+          branch,
           date,
-          time,
-          pay_to: payTo,
-          bank_breakdown: bankBreakdown,
-          status_notes: statusNotes,
-          amount_words: amountWords,
-          amount_numeric: amountNumeric,
-          micr_code: micrCode
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Digital Cheque #" + serialNum + " issued successfully for " + email };
+          amount,
+          payee_name: payeeName,
+          status,
+          remarks
+        }])
+      );
     }
 
     else if (action === "addAdvance") {
       const email = safeLower(data.email);
       const date = data.date || new Date().toLocaleDateString();
       const time = data.time || new Date().toLocaleTimeString();
-      const odUserId = data.odUserId || data.userId || "CRWO-User";
+      const odUserId = data.odUserId || "";
+      const name = data.name || "";
+      const amount = parseFloat(data.amount) || 0;
       const bankName = data.bankName || "";
-      const totalTurnover = data.totalTurnover || "0";
-      const requestedAmount = data.requestedAmount || "0";
-      const purpose = data.purpose || "";
+      const acNo = data.acNo || "";
+      const ifsc = data.ifsc || "";
+      const branch = data.branch || "";
+      const transactionId = data.transactionId || "";
+      const screenshot = data.screenshot || "";
+      const remarks = data.remarks || "";
+      const claimStatus = data.claimStatus || "CLAIM PENDING";
 
-      const { count, error: countErr } = await supabase
-        .from('advances')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
-
-      if (countErr) throw countErr;
+      const { count } = await withTimeout(
+        supabase.from('advances').select('*', { count: 'exact', head: true }).eq('email', email)
+      );
       const slNo = (count || 0) + 1;
 
-      const { error: insErr } = await supabase
-        .from('advances')
-        .insert([{
+      await withTimeout(
+        supabase.from('advances').insert([{
           email,
           sl_no: slNo,
           date,
           time,
           od_user_id: odUserId,
+          name,
+          amount,
           bank_name: bankName,
-          total_turnover: totalTurnover,
-          requested_amount: requestedAmount,
-          purpose,
-          claim_status: "PENDING"
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Advance request #" + slNo + " submitted successfully." };
+          ac_no: acNo,
+          ifsc,
+          branch,
+          transaction_id: transactionId,
+          screenshot,
+          remarks,
+          claim_status: claimStatus
+        }])
+      );
     }
 
     else if (action === "updateAdvance") {
       const email = safeLower(data.email);
       const slNo = parseInt(data.slNo);
-      const claimStatus = data.claimStatus || "PENDING";
-      const paymentDate = data.paymentDate || "";
-      const paymentTime = data.paymentTime || "";
-      const paymentUtr = data.paymentUtr || "";
-      const rejectionReason = data.rejectionReason || "";
+      const claimStatus = data.claimStatus;
+      const remarks = data.remarks;
 
-      const { error: upErr } = await supabase
-        .from('advances')
-        .update({
-          claim_status: claimStatus,
-          payment_date: paymentDate,
-          payment_time: paymentTime,
-          payment_utr: paymentUtr,
-          rejection_reason: rejectionReason
-        })
-        .eq('email', email)
-        .eq('sl_no', slNo);
+      const upObj: any = {};
+      if (claimStatus !== undefined) upObj.claim_status = claimStatus;
+      if (remarks !== undefined) upObj.remarks = remarks;
 
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Advance request #" + slNo + " updated successfully." };
+      await withTimeout(
+        supabase.from('advances').update(upObj).eq('email', email).eq('sl_no', slNo)
+      );
     }
 
     else if (action === "addComplain") {
       const email = safeLower(data.email);
+      const ticketNo = data.ticketNo || "CRWO-TKT-" + Math.floor(10000 + Math.random() * 90000);
       const date = data.date || new Date().toLocaleDateString();
       const time = data.time || new Date().toLocaleTimeString();
-      const odUserId = data.userId || "CRWO-User";
-      const subject = data.subject || "HELP/OTHERS";
+      const subject = data.subject || "";
       const description = data.description || "";
+      const attachment = data.attachment || "";
+      const status = data.status || "OPEN";
+      const remarks = data.remarks || "";
 
-      const { count, error: countErr } = await supabase
-        .from('complaints')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
-
-      if (countErr) throw countErr;
-      const slNo = (count || 0) + 1;
-      const numPadded = slNo < 10 ? ("0" + slNo) : ("" + slNo);
-      const ticketId = data.ticketId || (`${odUserId}-${numPadded}`);
-
-      const { error: insErr } = await supabase
-        .from('complaints')
-        .insert([{
+      await withTimeout(
+        supabase.from('complaints').insert([{
           email,
-          ticket_id: ticketId,
-          sl_no: slNo,
+          ticket_no: ticketNo,
           date,
           time,
-          od_user_id: odUserId,
           subject,
           description,
-          status: "PENDING"
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Complaint ticket " + ticketId + " submitted successfully.", ticketId };
+          attachment,
+          status,
+          remarks
+        }])
+      );
     }
 
     else if (action === "updateComplain") {
       const email = safeLower(data.email);
-      const ticketId = safeStr(data.ticketId);
-      const status = data.status || "PENDING";
-      const adminReply = data.adminReply || "";
-      const replyDateTime = data.replyDateTime || (new Date().toLocaleDateString() + " " + new Date().toLocaleTimeString());
+      const ticketNo = data.ticketNo;
+      const status = data.status;
+      const remarks = data.remarks;
 
-      const { error: upErr } = await supabase
-        .from('complaints')
-        .update({
-          status,
-          admin_reply: adminReply,
-          reply_date_time: replyDateTime
-        })
-        .eq('email', email)
-        .eq('ticket_id', ticketId);
+      const upObj: any = {};
+      if (status !== undefined) upObj.status = status;
+      if (remarks !== undefined) upObj.remarks = remarks;
 
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Ticket " + ticketId + " updated successfully." };
+      await withTimeout(
+        supabase.from('complaints').update(upObj).eq('email', email).eq('ticket_no', ticketNo)
+      );
     }
 
     else if (action === "addReferral") {
       const email = safeLower(data.email);
       const date = data.date || new Date().toLocaleDateString();
       const time = data.time || new Date().toLocaleTimeString();
-      const odUserId = data.userId || "CRWO-User";
-      const referralName = data.referralName || "";
-      const referralTier = data.referralTier || "FIRST CHAIN (2.5%)";
-      const registeredGmail = safeLower(data.registeredGmail);
-      const reason = data.reason || "";
+      const referredEmail = safeLower(data.referredEmail || "");
+      const referredName = data.referredName || "";
+      const rewardAmount = parseFloat(data.rewardAmount) || 0;
+      const claimStatus = data.claimStatus || "CLAIM PENDING";
+      const remarks = data.remarks || "";
 
-      const { count, error: countErr } = await supabase
-        .from('referrals')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
-
-      if (countErr) throw countErr;
+      const { count } = await withTimeout(
+        supabase.from('referrals').select('*', { count: 'exact', head: true }).eq('email', email)
+      );
       const slNo = (count || 0) + 1;
 
-      const { error: insErr } = await supabase
-        .from('referrals')
-        .insert([{
+      await withTimeout(
+        supabase.from('referrals').insert([{
           email,
           sl_no: slNo,
           date,
           time,
-          od_user_id: odUserId,
-          referral_name: referralName,
-          referral_tier: referralTier,
-          registered_gmail: registeredGmail,
-          reason,
-          status: "PENDING",
-          ref_status: "INACTIVE"
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Referral request #" + slNo + " submitted successfully." };
+          referred_email: referredEmail,
+          referred_name: referredName,
+          reward_amount: rewardAmount,
+          claim_status: claimStatus,
+          remarks
+        }])
+      );
     }
 
     else if (action === "updateReferral") {
       const email = safeLower(data.email);
       const slNo = parseInt(data.slNo);
-      const status = data.status || "PENDING";
-      const refStatus = data.refStatus || "INACTIVE";
+      const claimStatus = data.claimStatus;
+      const remarks = data.remarks;
 
-      const { error: upErr } = await supabase
-        .from('referrals')
-        .update({
-          status,
-          ref_status: refStatus
-        })
-        .eq('email', email)
-        .eq('sl_no', slNo);
+      const upObj: any = {};
+      if (claimStatus !== undefined) upObj.claim_status = claimStatus;
+      if (remarks !== undefined) upObj.remarks = remarks;
 
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Referral request #" + slNo + " updated successfully." };
+      await withTimeout(
+        supabase.from('referrals').update(upObj).eq('email', email).eq('sl_no', slNo)
+      );
     }
 
     else if (action === "addKyc") {
       const email = safeLower(data.email);
+      const aadhaarNo = data.aadhaarNo || "";
+      const panNo = data.panNo || "";
+      const aadhaarFront = data.aadhaarFront || "";
+      const aadhaarBack = data.aadhaarBack || "";
+      const panPhoto = data.panPhoto || "";
+      const selfiePhoto = data.selfiePhoto || "";
+      const status = data.status || "VERIFIED";
+      const remarks = data.remarks || "";
       const date = data.date || new Date().toLocaleDateString();
-      const time = data.time || new Date().toLocaleTimeString();
-      const userId = data.userId || "CRWO-User";
-      const fullName = data.fullName || "";
-      const phoneNumber = data.phoneNumber || "";
-      const aadharNumber = data.aadharNumber || "";
-      const panNumber = data.panNumber || "";
-      const fatherName = data.fatherName || "";
-      const motherName = data.motherName || "";
-      const state = data.state || "";
-      const district = data.district || "";
-      const cityVillage = data.cityVillage || "";
-      const street = data.street || "";
-      const houseNameNo = data.houseNameNo || "";
-      const landmark = data.landmark || "";
-      const pinCode = data.pinCode || "";
-      const bankHolderName = data.bankHolderName || "";
-      const bankAcNo = data.bankAcNo || "";
-      const bankIfsc = data.bankIfsc || "";
 
-      // Upsert KYC
-      const { error: upsErr } = await supabase
-        .from('kyc')
-        .upsert({
+      await withTimeout(
+        supabase.from('kyc').upsert({
           email,
-          date,
-          time,
-          user_id: userId,
-          full_name: fullName,
-          phone_number: phoneNumber,
-          aadhar_number: aadharNumber,
-          pan_number: panNumber,
-          father_name: fatherName,
-          mother_name: motherName,
-          state,
-          district,
-          city_village: cityVillage,
-          street,
-          house_name_no: houseNameNo,
-          landmark,
-          pin_code: pinCode,
-          bank_holder_name: bankHolderName,
-          bank_ac_no: bankAcNo,
-          bank_ifsc: bankIfsc,
-          status: "PENDING",
-          rejection_reason: ""
-        });
-
-      if (upsErr) throw upsErr;
-      writeResponse = { success: true, message: "KYC details submitted successfully." };
+          aadhaar_no: aadhaarNo,
+          pan_no: panNo,
+          aadhaar_front: aadhaarFront,
+          aadhaar_back: aadhaarBack,
+          pan_photo: panPhoto,
+          selfie_photo: selfiePhoto,
+          status,
+          remarks,
+          date
+        }, { onConflict: 'email' })
+      );
     }
 
     else if (action === "updateKyc") {
       const email = safeLower(data.email);
-      const status = data.status || "PENDING";
-      const rejectionReason = data.rejectionReason || "";
+      const status = data.status;
+      const remarks = data.remarks;
 
-      const { error: upErr } = await supabase
-        .from('kyc')
-        .update({
-          status,
-          rejection_reason: rejectionReason
-        })
-        .eq('email', email);
-
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "KYC status updated successfully to " + status };
+      await withTimeout(
+        supabase.from('kyc').update({ status, remarks }).eq('email', email)
+      );
     }
 
     else if (action === "addIdCard") {
       const email = safeLower(data.email);
-      const idNo = safeStr(data.idNo);
-      const photo = safeStr(data.photo);
-      const joiningDate = safeStr(data.joiningDate);
-      const leavingDate = safeStr(data.leavingDate);
-      const dob = safeStr(data.dob);
-      const designation = safeStr(data.designation);
-      const city = safeStr(data.city);
-      const district = safeStr(data.district);
-      const state = safeStr(data.state);
-      const pinCode = safeStr(data.pinCode);
+      const idNo = data.idNo || "";
+      const photo = data.photo || "";
+      const joiningDate = data.joiningDate || new Date().toLocaleDateString();
+      const leavingDate = data.leavingDate || "ACTIVE";
+      const dob = data.dob || "";
+      const designation = data.designation || "HOLDER";
+      const city = data.city || "";
+      const district = data.district || "";
+      const state = data.state || "";
+      const pinCode = data.pinCode || "";
 
-      const { error: upsErr } = await supabase
-        .from('id_cards')
-        .upsert({
+      await withTimeout(
+        supabase.from('id_cards').upsert({
           email,
           id_no: idNo,
           photo,
@@ -1335,122 +491,68 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
           district,
           state,
           pin_code: pinCode
-        });
-
-      if (upsErr) throw upsErr;
-      writeResponse = { success: true, message: "ID Card details updated successfully." };
+        }, { onConflict: 'email' })
+      );
     }
 
     else if (action === "addCourier") {
       const email = safeLower(data.email);
-      const departureDate = data.departureDate || new Date().toLocaleDateString();
-      const departuredBy = data.departuredBy || "";
-      const simType = data.simType || "JIO";
-      const simNo = data.simNo || "";
-      const totalAc = data.totalAc || "1";
-      const atmCards = data.atmCards || "1";
-      const registeredGmail = data.registeredGmail || "";
-      const gmailPass = data.gmailPass || "";
-      const platform = data.platform || "SPEEDPOST";
-      const trackingNo = data.trackingNo || "";
-      const receiverPhone = data.receiverPhone || "";
-      const dispatchingPinCode = data.dispatchingPinCode || "";
-      const address = data.address || "";
+      const date = data.date || new Date().toLocaleDateString();
+      const time = data.time || new Date().toLocaleTimeString();
+      const courierCompany = data.courierCompany || "";
+      const trackingNumber = data.trackingNumber || "";
+      const userStatus = data.userStatus || "PENDING";
+      const adminStatus = data.adminStatus || "DISPATCHED";
+      const remarks = data.remarks || "";
 
-      // Get userId
-      const { data: users, error: uErr } = await supabase
-        .from('users')
-        .select('user_id')
-        .eq('email', email);
-
-      if (uErr) throw uErr;
-      const userUserId = users && users.length > 0 ? users[0].user_id : "CRWO-4567";
-
-      // Count entries
-      const { count, error: countErr } = await supabase
-        .from('couriers')
-        .select('*', { count: 'exact', head: true })
-        .eq('email', email);
-
-      if (countErr) throw countErr;
+      const { count } = await withTimeout(
+        supabase.from('couriers').select('*', { count: 'exact', head: true }).eq('email', email)
+      );
       const slNo = (count || 0) + 1;
-      const numPadded = slNo < 10 ? ("00" + slNo) : (slNo < 100 ? ("0" + slNo) : ("" + slNo));
-      const batchNo = data.batchNo || (`${userUserId}-${numPadded}`);
 
-      const { error: insErr } = await supabase
-        .from('couriers')
-        .insert([{
+      await withTimeout(
+        supabase.from('couriers').insert([{
           email,
           sl_no: slNo,
-          batch_no: batchNo,
-          departure_date: departureDate,
-          departured_by: departuredBy,
-          sim_type: simType,
-          sim_no: simNo,
-          total_ac: totalAc,
-          atm_cards: atmCards,
-          registered_gmail: registeredGmail,
-          gmail_pass: gmailPass,
-          platform,
-          tracking_no: trackingNo,
-          receiver_phone: receiverPhone,
-          dispatching_pin_code: dispatchingPinCode,
-          address,
-          batch_received_status: "PENDING"
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Courier Batch " + batchNo + " dispatched successfully!", batchNo };
+          date,
+          time,
+          courier_company: courierCompany,
+          tracking_number: trackingNumber,
+          user_status: userStatus,
+          admin_status: adminStatus,
+          remarks
+        }])
+      );
     }
 
     else if (action === "updateCourierAdmin") {
       const email = safeLower(data.email);
-      const batchNo = safeStr(data.batchNo);
-      const receivedBy = data.receivedBy || "";
-      const receivingDate = data.receivingDate || new Date().toLocaleDateString();
-      const receivingPinCode = data.receivingPinCode || "";
-      const receivingAddress = data.receivingAddress || "";
-      const batchReceivedStatus = data.batchReceivedStatus || "RECEIVED";
-      const batchReturnedDate = data.batchReturnedDate || "";
+      const slNo = parseInt(data.slNo);
+      const adminStatus = data.adminStatus;
+      const remarks = data.remarks;
 
-      const { error: upErr } = await supabase
-        .from('couriers')
-        .update({
-          received_by: receivedBy,
-          receiving_date: receivingDate,
-          receiving_pin_code: receivingPinCode,
-          receiving_address: receivingAddress,
-          batch_received_status: batchReceivedStatus,
-          batch_returned_date: batchReturnedDate
-        })
-        .eq('email', email)
-        .eq('batch_no', batchNo);
+      const upObj: any = {};
+      if (adminStatus !== undefined) upObj.admin_status = adminStatus;
+      if (remarks !== undefined) upObj.remarks = remarks;
 
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Batch " + batchNo + " status updated successfully to " + batchReceivedStatus };
+      await withTimeout(
+        supabase.from('couriers').update(upObj).eq('email', email).eq('sl_no', slNo)
+      );
     }
 
     else if (action === "updateCourierUserConfirm") {
       const email = safeLower(data.email);
-      const batchNo = safeStr(data.batchNo);
-      const confirmStatus = data.confirmStatus || "CONFIRMED";
+      const slNo = parseInt(data.slNo);
+      const userStatus = data.userStatus || "DELIVERED";
 
-      const { error: upErr } = await supabase
-        .from('couriers')
-        .update({
-          batch_returned_user_confirmed: confirmStatus
-        })
-        .eq('email', email)
-        .eq('batch_no', batchNo);
-
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Batch " + batchNo + " receipt confirmed by user!" };
+      await withTimeout(
+        supabase.from('couriers').update({ user_status: userStatus }).eq('email', email).eq('sl_no', slNo)
+      );
     }
 
     else if (action === "addTraffic") {
-      const { error: insErr } = await supabase
-        .from('traffic')
-        .insert([{
+      await withTimeout(
+        supabase.from('traffic').insert([{
           date: safeStr(data.date),
           main_party: safeStr(data.mainParty),
           sub_party: safeStr(data.subParty),
@@ -1462,15 +564,13 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
           ac_name: safeStr(data.acName),
           total_turnover: Number(data.totalTurnover) || 0,
           remarks: safeStr(data.remarks)
-        }]);
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: "Traffic transaction logged successfully!" };
+        }])
+      );
     }
 
     else if (action === "updateTrafficPayment") {
-      const { error: upErr } = await supabase
-        .from('traffic')
-        .update({
+      await withTimeout(
+        supabase.from('traffic').update({
           status74: data.status74,
           status5: data.status5,
           status25: data.status25,
@@ -1478,73 +578,239 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
           status15: data.status15,
           status70: data.status70,
           remarks: data.remarks
-        })
-        .eq('sl_no', data.slNo);
-      if (upErr) throw upErr;
-      writeResponse = { success: true, message: "Traffic record margins updated successfully!" };
+        }).eq('sl_no', data.slNo)
+      );
     }
 
     else if (action === "addCommunityLink") {
-      const platform = safeStr(data.platform);
-      const title = safeStr(data.title);
-      const link = safeStr(data.link);
-      const logo = safeStr(data.logo);
-
-      const { data: lastRec } = await supabase
-        .from('traffic')
-        .select('sl_no')
-        .eq('main_party', '__COMMUNITY__')
-        .order('sl_no', { ascending: false })
-        .limit(1);
-
-      const nextSlNo = (lastRec && lastRec[0] && lastRec[0].sl_no ? Number(lastRec[0].sl_no) : 0) + 1;
-
-      const { error: insErr } = await supabase
-        .from('traffic')
-        .insert([{
-          sl_no: nextSlNo,
+      await withTimeout(
+        supabase.from('traffic').insert([{
+          sl_no: Date.now() % 1000000,
           main_party: '__COMMUNITY__',
-          sub_party: platform,
-          holder_name: title,
-          ac_name: link,
-          remarks: logo
-        }]);
-
-      if (insErr) throw insErr;
-      writeResponse = { success: true, message: `Community link for ${platform} created successfully!` };
+          sub_party: safeStr(data.platform),
+          holder_name: safeStr(data.title),
+          ac_name: safeStr(data.link),
+          remarks: safeStr(data.logo)
+        }])
+      );
     }
 
     else if (action === "deleteCommunityLink") {
-      const id = Number(data.id);
-      const { error: delErr } = await supabase
-        .from('traffic')
-        .delete()
-        .eq('id', id);
-
-      if (delErr) throw delErr;
-      writeResponse = { success: true, message: "Community link deleted." };
+      await withTimeout(
+        supabase.from('traffic').delete().eq('id', Number(data.id))
+      );
     }
 
-    // Run Google Apps Script background write for sync compatibility
-    fallbackCallApi(data).catch(err => {
-      console.warn("GAS background sync failed:", err);
+    else if (action === "addToBlacklist" || action === "addBlacklist") {
+      await withTimeout(
+        supabase.from('crwo_blacklist').upsert({
+          type: safeStr(data.type),
+          value: safeStr(data.value).toLowerCase(),
+          reason: safeStr(data.reason),
+          created_at: new Date().toISOString()
+        }, { onConflict: 'value' })
+      );
+    }
+
+    else if (action === "removeFromBlacklist" || action === "removeBlacklist") {
+      await withTimeout(
+        supabase.from('crwo_blacklist').delete().eq('id', Number(data.id))
+      );
+    }
+
+    else if (action === "logUserDevice" || action === "registerDevice") {
+      await withTimeout(
+        supabase.from('crwo_user_devices').upsert({
+          email: safeLower(data.email),
+          device_uuid: safeStr(data.deviceUuid),
+          ip_address: safeStr(data.ipAddress),
+          user_agent: safeStr(data.userAgent),
+          last_seen: new Date().toISOString()
+        }, { onConflict: 'email,device_uuid' })
+      );
+    }
+  } catch (err) {
+    // Secondary sync errors are non-blocking and will not impact user experience
+    console.warn("Supabase background fast-sync:", err);
+  }
+}
+
+// ----------------------------------------------------
+// DUAL-BASE API DISPATCHER
+// Google Sheet (Apps Script) = PRIMARY DATABASE MANAGEMENT
+// Supabase = SECONDARY FAST SYNC
+// ----------------------------------------------------
+export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promise<any>): Promise<any> => {
+  const action = data ? data.action : null;
+  if (!action) return { success: false, message: "No action provided" };
+
+  // --------------------------------------------------------------------------
+  // 1. SECURITY & BLACKLIST CONTROLS
+  // Handled immediately (0ms) from persistent localStorage cache so that
+  // the Security Tab and login blacklist check NEVER fail or delay.
+  // --------------------------------------------------------------------------
+  if (action === "checkBlacklist") {
+    const email = safeLower(data.email);
+    const deviceUuid = safeStr(data.deviceUuid);
+    const ipAddress = safeStr(data.ipAddress);
+    const list = getLocalBlacklist();
+
+    const blocked = list.find((b: any) => {
+      const bType = safeLower(b.type);
+      const bVal = safeLower(b.value);
+      if (bType === 'email' && email && bVal === email) return true;
+      if (bType === 'ip' && ipAddress && bVal === ipAddress) return true;
+      if (bType === 'device' && deviceUuid && bVal === deviceUuid) return true;
+      return false;
     });
 
-    return writeResponse;
+    if (blocked) {
+      return { success: true, isBlocked: true, reason: blocked.reason || "Account or device is blacklisted by admin." };
+    }
+    return { success: true, isBlocked: false };
+  }
 
-  } catch (err: any) {
-    console.error("Supabase API Intercept error:", err);
+  if (action === "getBlacklist") {
+    return { success: true, data: getLocalBlacklist() };
+  }
 
-    // Security actions must never fall back to Google Apps Script because Apps Script returns "Unknown action requested."
-    const securityActions = ['getBlacklist', 'getUserDevices', 'addToBlacklist', 'addBlacklist', 'removeFromBlacklist', 'removeBlacklist', 'checkBlacklist', 'logUserDevice', 'registerDevice'];
-    if (action && securityActions.includes(action)) {
-      if (action === 'getBlacklist') return { success: true, data: getLocalBlacklist() };
-      if (action === 'getUserDevices') return { success: true, data: getLocalDevices() };
-      if (action === 'checkBlacklist') return { success: true, isBlocked: false };
-      return { success: true, message: "Security operation handled." };
+  if (action === "getUserDevices") {
+    return { success: true, data: getLocalDevices() };
+  }
+
+  if (action === "logUserDevice" || action === "registerDevice") {
+    const email = safeLower(data.email);
+    const deviceUuid = safeStr(data.deviceUuid);
+    const ipAddress = safeStr(data.ipAddress);
+    const userAgent = safeStr(data.userAgent);
+
+    if (email && deviceUuid) {
+      const curDevices = getLocalDevices();
+      const existingIdx = curDevices.findIndex(d => safeLower(d.email) === email && d.device_uuid === deviceUuid);
+      const newDevEntry = {
+        id: existingIdx >= 0 ? curDevices[existingIdx].id : Date.now(),
+        email,
+        device_uuid: deviceUuid,
+        ip_address: ipAddress,
+        user_agent: userAgent,
+        last_seen: new Date().toISOString()
+      };
+      if (existingIdx >= 0) {
+        curDevices[existingIdx] = newDevEntry;
+      } else {
+        curDevices.unshift(newDevEntry);
+      }
+      saveLocalDevices(curDevices);
+
+      // Non-blocking sync to Supabase
+      syncToSupabase(data).catch(() => {});
+    }
+    return { success: true, message: "Logged device info" };
+  }
+
+  if (action === "addToBlacklist" || action === "addBlacklist") {
+    const type = safeStr(data.type);
+    const value = safeStr(data.value).toLowerCase();
+    const reason = safeStr(data.reason || "Unusual activity / Multi-account link");
+
+    if (!type || !value) return { success: false, message: "Type and value required" };
+
+    const curList = getLocalBlacklist();
+    const existingIdx = curList.findIndex(b => safeLower(b.value) === value);
+    const newEntry = {
+      id: existingIdx >= 0 ? curList[existingIdx].id : Date.now(),
+      type,
+      value,
+      reason,
+      created_at: new Date().toISOString()
+    };
+    if (existingIdx >= 0) {
+      curList[existingIdx] = newEntry;
+    } else {
+      curList.unshift(newEntry);
+    }
+    saveLocalBlacklist(curList);
+
+    // Non-blocking sync to Supabase
+    syncToSupabase(data).catch(() => {});
+    return { success: true, message: `Successfully blacklisted ${type}: ${value}` };
+  }
+
+  if (action === "removeFromBlacklist" || action === "removeBlacklist") {
+    const id = Number(data.id);
+    const curList = getLocalBlacklist();
+    const updatedList = curList.filter(b => Number(b.id) !== id);
+    saveLocalBlacklist(updatedList);
+
+    // Non-blocking sync to Supabase
+    syncToSupabase(data).catch(() => {});
+    return { success: true, message: "Successfully unblocked target entry" };
+  }
+
+  if (action === "getCommunityLinks") {
+    return { success: true, data: getLocalCommunityLinks() };
+  }
+
+  if (action === "addCommunityLink") {
+    const platform = safeStr(data.platform);
+    const title = safeStr(data.title);
+    const link = safeStr(data.link);
+    const logo = safeStr(data.logo);
+
+    const cur = getLocalCommunityLinks();
+    const newEntry = {
+      id: Date.now(),
+      slNo: cur.length + 1,
+      platform,
+      title,
+      link,
+      logo,
+      createdAt: new Date().toISOString()
+    };
+    cur.push(newEntry);
+    saveLocalCommunityLinks(cur);
+
+    syncToSupabase(data).catch(() => {});
+    return { success: true, message: `Community link for ${platform} created successfully!`, entry: newEntry };
+  }
+
+  if (action === "deleteCommunityLink") {
+    const id = Number(data.id);
+    const cur = getLocalCommunityLinks();
+    const updated = cur.filter(c => Number(c.id) !== id);
+    saveLocalCommunityLinks(updated);
+
+    syncToSupabase(data).catch(() => {});
+    return { success: true, message: "Community link deleted." };
+  }
+
+  // --------------------------------------------------------------------------
+  // 2. PRIMARY DATABASE MANAGEMENT (Google Apps Script)
+  // For all standard business functions (login, ledger, id card, bank, etc.),
+  // Google Apps Script is the PRIMARY authority and source of truth.
+  // --------------------------------------------------------------------------
+  try {
+    const primaryResponse = await fallbackCallApi(data);
+
+    // --------------------------------------------------------------------------
+    // 3. SECONDARY FAST SYNC (Supabase)
+    // When a write succeeds on the primary database, sync to Supabase asynchronously.
+    // --------------------------------------------------------------------------
+    const writeActions = [
+      'signup', 'addEntry', 'updateStatus', 'addBankDetails', 'updateBankStatus',
+      'updateBankDetails', 'addCheque', 'addAdvance', 'updateAdvance',
+      'addComplain', 'updateComplain', 'addReferral', 'updateReferral',
+      'addKyc', 'updateKyc', 'addIdCard', 'addCourier',
+      'updateCourierAdmin', 'updateCourierUserConfirm', 'addTraffic', 'updateTrafficPayment'
+    ];
+
+    if (primaryResponse && primaryResponse.success && writeActions.includes(action)) {
+      syncToSupabase(data).catch(() => {});
     }
 
-    // In case of error in Supabase, fall back to Google Apps Script completely
-    return await fallbackCallApi(data);
+    return primaryResponse;
+  } catch (err: any) {
+    console.error("Primary Google Apps Script API error:", err);
+    return { success: false, message: "Network connection to primary database failed." };
   }
 };
