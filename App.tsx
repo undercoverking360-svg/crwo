@@ -2255,6 +2255,17 @@ export default function App() {
     }
   }, [selectedEntryUser, blacklistType, adminFormTab, securityDevices]);
 
+  // Realtime live sync polling for Security Tab when active (every 5 seconds)
+  useEffect(() => {
+    if (adminFormTab === 'security') {
+      fetchSecurityData();
+      const interval = setInterval(() => {
+        fetchSecurityData();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [adminFormTab]);
+
   useEffect(() => {
     if (searchModalOpen) {
       fetchSearchData();

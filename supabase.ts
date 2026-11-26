@@ -5,6 +5,9 @@ const SUPABASE_ANON_KEY = "sb_publishable_iu-jlMAbcazlzAVvN2JoeQ_cGNIyryO";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Cloud Realtime Storage Endpoint for instant cross-device synchronization (PC <-> Mobile)
+const CLOUD_SECURITY_URL = "https://api.restful-api.dev/objects/ff808181a09d98f701a219a19966598f";
+
 // Helper to sanitize strings
 function safeStr(val: any): string {
   return (val !== null && val !== undefined) ? String(val).trim() : "";
@@ -15,7 +18,7 @@ function safeLower(val: any): string {
 }
 
 // Timeout wrapper for secondary Supabase sync so unreachable host never hangs
-const withTimeout = (promise: Promise<any>, ms = 2500) => {
+const withTimeout = (promise: Promise<any>, ms = 2000) => {
   return Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error("Supabase timeout")), ms))
@@ -80,6 +83,53 @@ const saveLocalCommunityLinks = (list: any[]) => {
     }
   } catch {}
 };
+
+// ----------------------------------------------------
+// REAL-TIME CLOUD SECURITY ENGINE (Global Shared Sync)
+// ----------------------------------------------------
+async function fetchCloudSecurity(): Promise<{ blacklist: any[]; devices: any[] }> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(CLOUD_SECURITY_URL, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+    if (res.ok) {
+      const json = await res.json();
+      const d = json.data || {};
+      const bl = Array.isArray(d.blacklist) ? d.blacklist : [];
+      const dev = Array.isArray(d.devices) ? d.devices : [];
+      saveLocalBlacklist(bl);
+      saveLocalDevices(dev);
+      return { blacklist: bl, devices: dev };
+    }
+  } catch (err) {
+    // Fall back to local storage if offline
+  }
+  return { blacklist: getLocalBlacklist(), devices: getLocalDevices() };
+}
+
+async function pushCloudSecurity(blacklist: any[], devices: any[]): Promise<void> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    await fetch(CLOUD_SECURITY_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: "crwo_security",
+        data: { blacklist, devices }
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(timer);
+  } catch (err) {
+    console.warn("pushCloudSecurity notice:", err);
+  }
+}
 
 // ----------------------------------------------------
 // SECONDARY FAST SYNC (Background Write to Supabase)
@@ -630,30 +680,38 @@ async function syncToSupabase(data: any): Promise<void> {
       );
     }
   } catch (err) {
-    // Secondary sync errors are non-blocking and will not impact user experience
-    console.warn("Supabase background fast-sync:", err);
+    // Secondary Supabase sync errors are non-blocking
   }
 }
 
 // ----------------------------------------------------
 // DUAL-BASE API DISPATCHER
 // Google Sheet (Apps Script) = PRIMARY DATABASE MANAGEMENT
-// Supabase = SECONDARY FAST SYNC
+// Supabase + Cloud REST = SECONDARY REAL-TIME FAST SYNC
 // ----------------------------------------------------
 export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promise<any>): Promise<any> => {
   const action = data ? data.action : null;
   if (!action) return { success: false, message: "No action provided" };
 
   // --------------------------------------------------------------------------
-  // 1. SECURITY & BLACKLIST CONTROLS
-  // Handled immediately (0ms) from persistent localStorage cache so that
-  // the Security Tab and login blacklist check NEVER fail or delay.
+  // 1. SECURITY & BLACKLIST CONTROLS (REAL-TIME CLOUD + LOCAL CACHE)
+  // Shared dynamically across Mobile & PC in real-time.
   // --------------------------------------------------------------------------
   if (action === "checkBlacklist") {
     const email = safeLower(data.email);
     const deviceUuid = safeStr(data.deviceUuid);
     const ipAddress = safeStr(data.ipAddress);
-    const list = getLocalBlacklist();
+
+    let list = getLocalBlacklist();
+    try {
+      const cloudData = await Promise.race([
+        fetchCloudSecurity(),
+        new Promise<any>((_, reject) => setTimeout(() => reject('timeout'), 700))
+      ]);
+      if (cloudData && Array.isArray(cloudData.blacklist)) {
+        list = cloudData.blacklist;
+      }
+    } catch {}
 
     const blocked = list.find((b: any) => {
       const bType = safeLower(b.type);
@@ -671,11 +729,13 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
   }
 
   if (action === "getBlacklist") {
-    return { success: true, data: getLocalBlacklist() };
+    const cloud = await fetchCloudSecurity();
+    return { success: true, data: cloud.blacklist };
   }
 
   if (action === "getUserDevices") {
-    return { success: true, data: getLocalDevices() };
+    const cloud = await fetchCloudSecurity();
+    return { success: true, data: cloud.devices };
   }
 
   if (action === "logUserDevice" || action === "registerDevice") {
@@ -701,6 +761,21 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
         curDevices.unshift(newDevEntry);
       }
       saveLocalDevices(curDevices);
+
+      // Async cloud sync for real-time mobile <-> PC sync
+      (async () => {
+        try {
+          const { blacklist, devices } = await fetchCloudSecurity();
+          const idx = devices.findIndex(d => safeLower(d.email) === email && d.device_uuid === deviceUuid);
+          if (idx >= 0) {
+            devices[idx] = newDevEntry;
+          } else {
+            devices.unshift(newDevEntry);
+          }
+          saveLocalDevices(devices);
+          await pushCloudSecurity(blacklist, devices);
+        } catch (e) {}
+      })();
 
       // Non-blocking sync to Supabase
       syncToSupabase(data).catch(() => {});
@@ -731,6 +806,19 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
     }
     saveLocalBlacklist(curList);
 
+    // Sync to Cloud in real-time
+    try {
+      const { blacklist, devices } = await fetchCloudSecurity();
+      const idx = blacklist.findIndex(b => safeLower(b.value) === value);
+      if (idx >= 0) {
+        blacklist[idx] = newEntry;
+      } else {
+        blacklist.unshift(newEntry);
+      }
+      saveLocalBlacklist(blacklist);
+      await pushCloudSecurity(blacklist, devices);
+    } catch (e) {}
+
     // Non-blocking sync to Supabase
     syncToSupabase(data).catch(() => {});
     return { success: true, message: `Successfully blacklisted ${type}: ${value}` };
@@ -741,6 +829,14 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
     const curList = getLocalBlacklist();
     const updatedList = curList.filter(b => Number(b.id) !== id);
     saveLocalBlacklist(updatedList);
+
+    // Sync to Cloud in real-time
+    try {
+      const { blacklist, devices } = await fetchCloudSecurity();
+      const updated = blacklist.filter(b => Number(b.id) !== id);
+      saveLocalBlacklist(updated);
+      await pushCloudSecurity(updated, devices);
+    } catch (e) {}
 
     // Non-blocking sync to Supabase
     syncToSupabase(data).catch(() => {});
