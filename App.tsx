@@ -44,7 +44,8 @@ import {
   Bell,
   Filter,
   X,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Trash2
 } from 'lucide-react';
 
 import { verifyAdminWithFirebase, verifyTrafficPasscodeWithFirebase, verifySearchPasscodeWithFirebase } from './firebase';
@@ -716,7 +717,8 @@ export default function App() {
   const [communityLinks, setCommunityLinks] = useState<any[]>(() => {
     try {
       const c = localStorage.getItem('crwo_community_links_cache');
-      return c ? JSON.parse(c) : [];
+      const parsed = c ? JSON.parse(c) : [];
+      return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
   });
   const [isCommunityLoading, setIsCommunityLoading] = useState(false);
@@ -979,14 +981,18 @@ export default function App() {
     setIsCommunityLoading(true);
     try {
       const res = await callApi({ action: 'getCommunityLinks' });
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
         setCommunityLinks(res.data);
         try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(res.data)); } catch (e) {}
       } else {
         try {
           const c = localStorage.getItem('crwo_community_links_cache');
-          if (c) setCommunityLinks(JSON.parse(c));
-          else setCommunityLinks([]);
+          if (c) {
+            const parsed = JSON.parse(c);
+            setCommunityLinks(Array.isArray(parsed) ? parsed : []);
+          } else {
+            setCommunityLinks([]);
+          }
         } catch (e) {
           setCommunityLinks([]);
         }
@@ -995,7 +1001,10 @@ export default function App() {
       console.error("fetchCommunityLinks error:", err);
       try {
         const c = localStorage.getItem('crwo_community_links_cache');
-        if (c) setCommunityLinks(JSON.parse(c));
+        if (c) {
+          const parsed = JSON.parse(c);
+          setCommunityLinks(Array.isArray(parsed) ? parsed : []);
+        }
       } catch (e) {}
     } finally {
       setIsCommunityLoading(false);
@@ -1016,16 +1025,17 @@ export default function App() {
         logo: commLogo.trim(),
         link: commJoinLink.trim()
       });
+      const current = Array.isArray(communityLinks) ? communityLinks : [];
       const newEntry = {
         id: Date.now(),
-        slNo: communityLinks.length + 1,
+        slNo: current.length + 1,
         platform: commPlatform.trim(),
         title: commTitle.trim(),
         logo: commLogo.trim(),
         link: commJoinLink.trim(),
         createdAt: new Date().toISOString()
       };
-      const updated = [...communityLinks, newEntry];
+      const updated = [...current, newEntry];
       setCommunityLinks(updated);
       try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(updated)); } catch (e) {}
 
@@ -1064,7 +1074,8 @@ export default function App() {
     if (!confirm("Are you sure you want to remove this community link?")) return;
     try {
       await callApi({ action: 'deleteCommunityLink', id });
-      const filtered = communityLinks.filter((item: any) => item.id !== id);
+      const current = Array.isArray(communityLinks) ? communityLinks : [];
+      const filtered = current.filter((item: any) => item.id !== id);
       setCommunityLinks(filtered);
       try { localStorage.setItem('crwo_community_links_cache', JSON.stringify(filtered)); } catch (e) {}
       addNotification("Community link removed.");
@@ -10229,7 +10240,7 @@ export default function App() {
                       <div className="space-y-6">
                         <div className="text-sm font-semibold text-teal-400 uppercase tracking-widest font-orbitron border-b border-slate-800/80 pb-2 flex items-center justify-between">
                           <span>🌐 Official Community Platform Links Setup</span>
-                          <span className="text-xs font-mono text-slate-400">{communityLinks.length} Active Groups</span>
+                          <span className="text-xs font-mono text-slate-400">{(Array.isArray(communityLinks) ? communityLinks : []).length} Active Groups</span>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -10326,21 +10337,21 @@ export default function App() {
                                 <div className="py-8 text-center text-xs text-slate-400">
                                   Loading community registry...
                                 </div>
-                              ) : communityLinks.length === 0 ? (
+                              ) : (!Array.isArray(communityLinks) || communityLinks.length === 0) ? (
                                 <div className="py-8 text-center text-xs text-slate-500 italic">
                                   No extra community links yet. Default Discord is active on website.
                                 </div>
                               ) : (
                                 <div className="space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar pr-1">
-                                  {communityLinks.map((item: any) => (
+                                  {(Array.isArray(communityLinks) ? communityLinks : []).map((item: any) => (
                                     <div 
                                       key={item.id} 
                                       className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3"
                                     >
                                       <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
-                                          {item.logo ? (
-                                            <img src={item.logo} alt={item.platform} className="w-6 h-6 object-contain rounded" />
+                                          {item.logo && typeof item.logo === 'string' && (item.logo.startsWith('http://') || item.logo.startsWith('https://') || item.logo.startsWith('data:')) ? (
+                                            <img src={item.logo} alt={item.platform || 'Platform'} className="w-6 h-6 object-contain rounded" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                                           ) : (
                                             <MessageSquare className="w-5 h-5 text-teal-400" />
                                           )}
@@ -11641,15 +11652,15 @@ export default function App() {
                   Loading community channels...
                 </div>
               ) : (
-                communityLinks.map((item: any) => (
+                (Array.isArray(communityLinks) ? communityLinks : []).map((item: any) => (
                   <div 
                     key={item.id} 
                     className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
-                        {item.logo ? (
-                          <img src={item.logo} alt={item.platform} className="w-6 h-6 object-contain rounded" />
+                        {item.logo && typeof item.logo === 'string' && (item.logo.startsWith('http://') || item.logo.startsWith('https://') || item.logo.startsWith('data:')) ? (
+                          <img src={item.logo} alt={item.platform || 'Platform'} className="w-6 h-6 object-contain rounded" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                         ) : (
                           <Users className="w-5 h-5 text-teal-400" />
                         )}

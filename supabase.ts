@@ -63,14 +63,16 @@ const saveLocalDevices = (list: any[]) => {
 };
 
 const DEFAULT_COMMUNITY_LINKS = [
-  { id: 1, slNo: 1, platform: 'Discord', title: 'Official Discord Server', link: 'https://discord.gg/KQbGpWSux3', logo: 'discord' },
-  { id: 2, slNo: 2, platform: 'Telegram', title: 'CRWO Official Updates', link: 'https://t.me/crwo_official', logo: 'telegram' }
+  { id: 1, slNo: 1, platform: 'Discord', title: 'Official Discord Server', link: 'https://discord.gg/KQbGpWSux3', logo: '' },
+  { id: 2, slNo: 2, platform: 'Telegram', title: 'CRWO Official Updates', link: 'https://t.me/crwo_official', logo: '' }
 ];
 
 const getLocalCommunityLinks = (): any[] => {
   try {
     const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('crwo_community_links_cache') : null;
-    return raw ? JSON.parse(raw) : DEFAULT_COMMUNITY_LINKS;
+    if (!raw) return DEFAULT_COMMUNITY_LINKS;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : DEFAULT_COMMUNITY_LINKS;
   } catch {
     return DEFAULT_COMMUNITY_LINKS;
   }
@@ -79,7 +81,7 @@ const getLocalCommunityLinks = (): any[] => {
 const saveLocalCommunityLinks = (list: any[]) => {
   try {
     if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('crwo_community_links_cache', JSON.stringify(list));
+      localStorage.setItem('crwo_community_links_cache', JSON.stringify(Array.isArray(list) ? list : []));
     }
   } catch {}
 };
