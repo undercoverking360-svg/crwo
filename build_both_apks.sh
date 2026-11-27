@@ -48,6 +48,7 @@ sed -i 's/VERSION_21/VERSION_17/g' android/capacitor-cordova-android-plugins/bui
 sed -i 's/VERSION_21/VERSION_17/g' node_modules/@capacitor/local-notifications/android/build.gradle 2>/dev/null || true
 sed -i 's/jvmToolchain(21)/jvmToolchain(17)/g' node_modules/@capacitor/local-notifications/android/build.gradle 2>/dev/null || true
 
+rm -rf android/app/build/outputs/apk/release
 cd android
 ./gradlew assembleRelease
 cd ..
@@ -91,6 +92,7 @@ sed -i 's/VERSION_21/VERSION_17/g' android/capacitor-cordova-android-plugins/bui
 sed -i 's/VERSION_21/VERSION_17/g' node_modules/@capacitor/local-notifications/android/build.gradle 2>/dev/null || true
 sed -i 's/jvmToolchain(21)/jvmToolchain(17)/g' node_modules/@capacitor/local-notifications/android/build.gradle 2>/dev/null || true
 
+rm -rf android/app/build/outputs/apk/release
 cd android
 ./gradlew assembleRelease
 cd ..

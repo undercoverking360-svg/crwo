@@ -3411,7 +3411,7 @@ export default function App() {
                   <span>Download CRWO Android App</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono bg-teal-500/25 text-teal-200 border border-teal-500/30 font-bold">v2.11.0</span>
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono bg-teal-500/25 text-teal-200 border border-teal-500/30 font-bold">v2.11.1</span>
                   <Download className="w-3 h-3 text-teal-400" />
                 </div>
               </button>
@@ -3734,7 +3734,7 @@ export default function App() {
                       <Smartphone className="w-3.5 h-3.5" />
                       <span>CRWO Android Apps</span>
                     </div>
-                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold">v2.11.0</span>
+                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold">v2.11.1</span>
                   </div>
                   <p className={`text-[10px] leading-relaxed mb-2.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     Directly install official CRWO Member or Admin native APKs for smooth performance.
@@ -11593,7 +11593,7 @@ export default function App() {
                       CRWO Official Mobile Apps
                     </h2>
                     <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
-                      v2.11.0
+                      v2.11.1
                     </span>
                   </div>
                   <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -11685,7 +11685,7 @@ export default function App() {
                 </div>
 
                 <a 
-                  href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.0/CRWO-User.apk"
+                  href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.1/CRWO-User.apk"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ 
@@ -11742,7 +11742,7 @@ export default function App() {
                 </div>
 
                 <a 
-                  href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.0/CRWO-Admin.apk"
+                  href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.1/CRWO-Admin.apk"
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{ 
