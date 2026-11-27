@@ -3654,82 +3654,84 @@ export default function App() {
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className={isNativeAdminApp ? "w-full" : "grid grid-cols-1 lg:grid-cols-4 gap-8"}>
 
-          {/* SIDEBAR NAVIGATION */}
-          <aside className="hidden lg:block lg:col-span-1">
-            <div className={`rounded-2xl border p-4 sticky top-24 ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
-              <p className={`text-[10px] font-bold uppercase tracking-widest px-3 mb-3 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                Operational Terminal
-              </p>
-              
-              <nav className="space-y-1">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveTab(item.id as any)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                        isActive 
-                          ? (darkMode 
-                              ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 glow-border' 
-                              : 'bg-blue-50 text-blue-700 border border-blue-100') 
-                          : (darkMode 
-                              ? 'text-slate-400 hover:bg-slate-900/50 hover:text-white border border-transparent' 
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent')
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-4 h-4 ${isActive ? (darkMode ? 'text-teal-400' : 'text-blue-600') : ''}`} />
-                        <span>{item.label}</span>
-                      </div>
-                      
-                      {item.alert && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
+          {/* SIDEBAR NAVIGATION (Hidden in Admin APK for full-width workspace) */}
+          {!isNativeAdminApp && (
+            <aside className="hidden lg:block lg:col-span-1">
+              <div className={`rounded-2xl border p-4 sticky top-24 ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
+                <p className={`text-[10px] font-bold uppercase tracking-widest px-3 mb-3 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Operational Terminal
+                </p>
+                
+                <nav className="space-y-1">
+                  {navItems.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id as any)}
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                          isActive 
+                            ? (darkMode 
+                                ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20 glow-border' 
+                                : 'bg-blue-50 text-blue-700 border border-blue-100') 
+                            : (darkMode 
+                                ? 'text-slate-400 hover:bg-slate-900/50 hover:text-white border border-transparent' 
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent')
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Icon className={`w-4 h-4 ${isActive ? (darkMode ? 'text-teal-400' : 'text-blue-600') : ''}`} />
+                          <span>{item.label}</span>
+                        </div>
+                        
+                        {item.alert && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </nav>
 
-              {/* Sidebar Footer Widget */}
-              <div className={`mt-6 pt-6 border-t ${darkMode ? 'border-slate-850' : 'border-slate-100'} text-xs`}>
-                <div className={`p-3.5 rounded-xl border flex flex-col gap-2 ${darkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
-                  <div className="flex items-center gap-1.5 font-bold">
-                    <UserCheck className={`w-3.5 h-3.5 ${userEmail ? 'text-emerald-400' : 'text-slate-500'}`} />
-                    <span>Identity Status</span>
-                  </div>
-                  {userEmail ? (
-                    <div>
-                      <p className="text-emerald-400 font-bold text-[11px] uppercase tracking-wider">
-                        WELCOME MISTER {(userName || 'MEMBER').toUpperCase()} IN CRWO
-                      </p>
-                      <p className={`text-[10px] mt-1 font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {userId || 'CRWO-User'} • Verified Member
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
-                        <span className="text-[10px] text-emerald-400/80 font-semibold">AUTHENTICATED & ONLINE</span>
-                      </div>
+                {/* Sidebar Footer Widget */}
+                <div className={`mt-6 pt-6 border-t ${darkMode ? 'border-slate-850' : 'border-slate-100'} text-xs`}>
+                  <div className={`p-3.5 rounded-xl border flex flex-col gap-2 ${darkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <UserCheck className={`w-3.5 h-3.5 ${userEmail ? 'text-emerald-400' : 'text-slate-500'}`} />
+                      <span>Identity Status</span>
                     </div>
-                  ) : (
-                    <p className={`text-[11px] leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Connected as guest. Please authenticate to access backend processes.
-                    </p>
-                  )}
+                    {userEmail ? (
+                      <div>
+                        <p className="text-emerald-400 font-bold text-[11px] uppercase tracking-wider">
+                          WELCOME MISTER {(userName || 'MEMBER').toUpperCase()} IN CRWO
+                        </p>
+                        <p className={`text-[10px] mt-1 font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {userId || 'CRWO-User'} • Verified Member
+                        </p>
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                          <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+                          <span className="text-[10px] text-emerald-400/80 font-semibold">AUTHENTICATED & ONLINE</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className={`text-[11px] leading-relaxed ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Connected as guest. Please authenticate to access backend processes.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-            </div>
-          </aside>
+              </div>
+            </aside>
+          )}
 
           {/* MAIN CONTENT AREA */}
-          <main className="lg:col-span-3">
+          <main className={isNativeAdminApp ? "w-full" : "lg:col-span-3"}>
             <div className={`rounded-2xl border p-6 min-h-[500px] ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
-                            {/* ADMIN VIEW */}
-              {activeTab === 'admin' && (
+              {/* ADMIN VIEW */}
+              {activeTab === 'admin' && !isNativeUserApp && (
                 !adminAuthenticated ? (
                   <div className="max-w-md mx-auto py-8">
                     <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
@@ -6209,8 +6211,11 @@ export default function App() {
             )
           )}
 
-              {/* KYC VIEW */}
-              {activeTab === 'kyc' && (
+              {/* USER SECTION TABS (Completely disabled in Admin APK) */}
+              {!isNativeAdminApp && (
+                <>
+                  {/* KYC VIEW */}
+                  {activeTab === 'kyc' && (
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b pb-4 mb-6 border-slate-800/80 gap-4">
                     <div>
@@ -9065,8 +9070,10 @@ export default function App() {
                   )}
                 </div>
               )}
-              {/* TRAFFIC GATE & PORTAL VIEW (STANDALONE FULLSCREEN OVERLAY) */}
-              {trafficPortalOpen && (
+                </>
+              )}
+              {/* TRAFFIC GATE & PORTAL VIEW (STANDALONE FULLSCREEN OVERLAY, Hidden in User APK) */}
+              {trafficPortalOpen && !isNativeUserApp && (
                 <div 
                   style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, width: '100vw', height: '100vh', zIndex: 9999999, backgroundColor: '#020617' }}
                   className="fixed inset-0 z-50 text-slate-100 flex flex-col overflow-y-auto p-4 md:p-8 font-sans"
@@ -10833,8 +10840,8 @@ export default function App() {
         </div>
       )}
 
-      {/* LOGIN & SIGN UP MODAL */}
-      {loginOpen && (
+      {/* LOGIN & SIGN UP MODAL (Hidden in Admin Native APK) */}
+      {loginOpen && !isNativeAdminApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-md">
           <div className={`w-full max-w-sm p-6 rounded-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'} shadow-2xl`}>
             
@@ -11031,8 +11038,8 @@ export default function App() {
         </div>
       )}
 
-      {/* DATABASE SEARCH MODAL */}
-      {searchModalOpen && (
+      {/* DATABASE SEARCH MODAL (Hidden in User Native APK) */}
+      {searchModalOpen && !isNativeUserApp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/85 backdrop-blur-md">
           <div className={`w-full max-w-6xl p-4 sm:p-6 rounded-2xl border shadow-2xl relative max-h-[95vh] overflow-y-auto custom-scrollbar ${
             darkMode ? 'bg-slate-900 border-teal-500/20 text-slate-200' : 'bg-white border-blue-200 text-slate-800'
