@@ -882,6 +882,111 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
     return { success: true, message: "Community link deleted." };
   }
 
+  // Real-time Pending Requests Telemetry Aggregator for Admin Terminal
+  if (action === "getPendingRequests") {
+    try {
+      const [courierRes, usersRes] = await Promise.all([
+        fallbackCallApi({ action: 'getCouriers', email: 'all' }).catch(() => ({ success: false, data: [] })),
+        fallbackCallApi({ action: 'getUserList' }).catch(() => ({ success: false, data: [] }))
+      ]);
+
+      const pending: any[] = [];
+
+      // 1. Pending Couriers
+      const couriers = Array.isArray(courierRes?.data) ? courierRes.data : [];
+      couriers.forEach((b: any) => {
+        if (b && String(b.batchReceivedStatus || '').toUpperCase() === 'PENDING') {
+          pending.push({
+            id: `pending-courier-${b.batchNo || b.slNo || Math.random()}`,
+            email: b.email,
+            userId: b.departuredBy || 'MEMBER',
+            title: `Courier Batch #${b.batchNo || b.slNo} Pending Confirmation`,
+            details: `Dispatch Platform: ${b.platform || 'N/A'} • Tracking: ${b.trackingNo || 'N/A'} • SIM: ${b.simNo || 'N/A'}`,
+            moduleTab: 'courier',
+            type: 'courier',
+            status: 'PENDING',
+            timestamp: b.departureDate || 'Recent'
+          });
+        }
+      });
+
+      // 2. Pending across users (Complaints, Advances, KYC)
+      const users: string[] = Array.isArray(usersRes?.data) ? usersRes.data : [];
+      await Promise.all(users.map(async (email: string) => {
+        if (!email) return;
+        try {
+          const [compRes, advRes, kycRes] = await Promise.all([
+            fallbackCallApi({ action: 'getComplaints', email }).catch(() => ({ success: false, data: [] })),
+            fallbackCallApi({ action: 'getAdvances', email }).catch(() => ({ success: false, data: [] })),
+            fallbackCallApi({ action: 'getKyc', email }).catch(() => ({ success: false, data: null }))
+          ]);
+
+          // Complaints
+          const complaints = Array.isArray(compRes?.data) ? compRes.data : [];
+          complaints.forEach((c: any) => {
+            const st = String(c?.status || 'PENDING').toUpperCase();
+            if (st === 'PENDING' || st === 'OPEN') {
+              pending.push({
+                id: `pending-complain-${c.ticketId || c.slNo || email}`,
+                email,
+                userId: c.odUserId || 'MEMBER',
+                title: `Support Ticket #${c.ticketId || 'TKT'}: ${c.subject || 'Inquiry'}`,
+                details: c.description || 'Pending Admin reply',
+                moduleTab: 'complain',
+                type: 'complain',
+                status: 'PENDING',
+                timestamp: `${c.date || ''} ${c.time || ''}`.trim() || 'Recent'
+              });
+            }
+          });
+
+          // Advances
+          const advances = Array.isArray(advRes?.data) ? advRes.data : [];
+          advances.forEach((a: any) => {
+            const cst = String(a?.claimStatus || 'PENDING').toUpperCase();
+            if (cst.includes('PENDING')) {
+              pending.push({
+                id: `pending-advance-${a.slNo || email}-${a.date || ''}`,
+                email,
+                userId: a.odUserId || 'MEMBER',
+                title: `Advance Claim: ₹${a.requestedAmount || a.amount || '0'} (${a.bankName || 'Bank'})`,
+                details: `Purpose: ${a.purpose || 'Emergency Advance'} • Turnover: ₹${a.totalTurnover || '0'}`,
+                moduleTab: 'advance',
+                type: 'advance',
+                status: 'PENDING',
+                timestamp: `${a.date || ''} ${a.time || ''}`.trim() || 'Recent'
+              });
+            }
+          });
+
+          // KYC
+          const k = kycRes?.data;
+          if (k && typeof k === 'object') {
+            const kst = String(k.status || k.kycStatus || 'PENDING').toUpperCase();
+            if (kst === 'PENDING') {
+              pending.push({
+                id: `pending-kyc-${email}`,
+                email,
+                userId: k.userId || 'MEMBER',
+                title: `KYC Document Verification: ${k.fullName || email}`,
+                details: `Phone: ${k.phoneNumber || 'N/A'} • Aadhar: ${k.aadharNumber || 'N/A'} • State: ${k.state || 'N/A'}`,
+                moduleTab: 'kyc',
+                type: 'kyc',
+                status: 'PENDING',
+                timestamp: `${k.date || ''} ${k.time || ''}`.trim() || 'Recent'
+              });
+            }
+          }
+        } catch (e) {}
+      }));
+
+      return { success: true, data: pending };
+    } catch (e: any) {
+      console.error("getPendingRequests error:", e);
+      return { success: false, data: [] };
+    }
+  }
+
   // --------------------------------------------------------------------------
   // 2. PRIMARY DATABASE MANAGEMENT (Google Apps Script)
   // For all standard business functions (login, ledger, id card, bank, etc.),

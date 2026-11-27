@@ -566,13 +566,82 @@ export default function App() {
     try {
       const res = await callApi({ action: 'getPendingRequests' });
       if (res && res.success && Array.isArray(res.data)) {
-        setAdminPendingRequests(res.data);
+        let dismissedIds: string[] = [];
+        try {
+          const raw = localStorage.getItem('crwo_admin_dismissed_pending');
+          if (raw) dismissedIds = JSON.parse(raw);
+        } catch (e) {}
+        const filtered = res.data.filter((req: any) => !dismissedIds.includes(req.id));
+        setAdminPendingRequests(filtered);
       }
     } catch (e) {
       console.error("fetchAdminPendingRequests error:", e);
     } finally {
       setIsRefreshingPending(false);
     }
+  };
+
+  const handleUserNotificationClick = (n: any) => {
+    if (!n) return;
+
+    const typeLower = (n.type || '').toLowerCase();
+    const titleLower = (n.title || '').toLowerCase();
+    const msgLower = (n.message || n.details || '').toLowerCase();
+
+    let targetTab = 'ledger';
+    let tabName = 'Ledger';
+
+    if (typeLower.includes('advance') || titleLower.includes('advance') || msgLower.includes('advance')) {
+      targetTab = 'advance';
+      tabName = 'Advance Claims';
+    } else if (typeLower.includes('complain') || typeLower.includes('support') || titleLower.includes('ticket') || titleLower.includes('complain') || titleLower.includes('support') || msgLower.includes('ticket') || msgLower.includes('complaint')) {
+      targetTab = 'complain';
+      tabName = 'Support & Complaints';
+    } else if (typeLower.includes('kyc') || titleLower.includes('kyc') || msgLower.includes('kyc')) {
+      targetTab = 'kyc';
+      tabName = 'KYC Verification';
+    } else if (typeLower.includes('cheque') || titleLower.includes('cheque') || msgLower.includes('cheque')) {
+      targetTab = 'cheque';
+      tabName = 'Digital Cheques';
+    } else if (typeLower.includes('courier') || typeLower.includes('parcel') || titleLower.includes('courier') || titleLower.includes('batch') || msgLower.includes('courier') || msgLower.includes('parcel')) {
+      targetTab = 'courier';
+      tabName = 'Courier Tracking';
+    } else if (typeLower.includes('bank') || titleLower.includes('bank') || msgLower.includes('bank')) {
+      targetTab = 'acDetails';
+      tabName = 'Account Details';
+    } else if (typeLower.includes('id') || titleLower.includes('id card') || msgLower.includes('id card')) {
+      targetTab = 'idCard';
+      tabName = 'Member ID Card';
+    } else if (typeLower.includes('guide') || titleLower.includes('guide') || titleLower.includes('tutorial') || msgLower.includes('guide') || msgLower.includes('video')) {
+      targetTab = 'guide';
+      tabName = 'Tutorial Guide';
+    } else if (typeLower.includes('community') || titleLower.includes('community') || msgLower.includes('discord') || msgLower.includes('telegram')) {
+      setCommunityModalOpen(true);
+      targetTab = 'community';
+      tabName = 'Official Community';
+    } else if (typeLower.includes('referral') || titleLower.includes('referral') || msgLower.includes('referral')) {
+      targetTab = 'referral';
+      tabName = 'Referrals';
+    }
+
+    // Direct redirection to the target module tab
+    if (targetTab !== 'community') {
+      setActiveTab(targetTab as any);
+    }
+
+    // Close notification modal if open
+    setIsUserNotificationOpen(false);
+
+    // Hide / dismiss touched notification from user telemetry feed
+    setUserTelemetryNotifications(prev => {
+      const updated = prev.filter(item => item.id !== n.id);
+      try {
+        localStorage.setItem('crwo_user_telemetry', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    addNotification(`Redirected to ${tabName} module.`);
   };
 
   const fetchSelectedUserLedger = async (email: string) => {
@@ -1579,8 +1648,25 @@ export default function App() {
       });
       if (res.success) {
         addNotification('Advance request submitted!');
+        const reqAmt = advRequestedAmount;
+        const bName = advBankName;
+        const purp = advPurpose;
         setAdvBankName(''); setAdvTotalTurnover(''); setAdvRequestedAmount(''); setAdvPurpose('');
         fetchUserAdvances(userEmail);
+        try {
+          const newNotif = {
+            id: `notif-adv-submitted-${Date.now()}`,
+            title: `Advance Claim Submitted: ₹${reqAmt}`,
+            message: `Bank: ${bName} • Purpose: ${purp || 'Emergency Advance'} • Awaiting Admin approval.`,
+            type: 'advance',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'PENDING'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
       } else { addNotification(res.message || 'Failed.'); }
     } catch (err) { console.error(err); addNotification('Connection error.'); }
     finally { setAdvSubmitLoading(false); }
@@ -1716,6 +1802,20 @@ export default function App() {
       if (res.success) {
         addNotification('Registration & KYC details submitted successfully!');
         fetchUserKyc(userEmail);
+        try {
+          const newNotif = {
+            id: `notif-kyc-submitted-${Date.now()}`,
+            title: 'KYC Documents Submitted',
+            message: `Full Name: ${kycFullName} • Aadhar: ${kycAadharNo} • Awaiting Admin verification.`,
+            type: 'kyc',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'PENDING'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
       } else {
         addNotification(res.message || 'Failed to submit KYC.');
       }
@@ -1739,6 +1839,25 @@ export default function App() {
       });
       if (res.success) {
         addNotification('KYC status updated successfully!');
+        setAdminPendingRequests(prev => prev.filter(p => !(p.email.toLowerCase() === selectedEntryUser.toLowerCase() && p.type === 'kyc')));
+        sendNativePushNotification(
+          'CRWO KYC Verification Update',
+          `KYC verification for ${selectedEntryUser} marked ${adminKycStatus}!`
+        );
+        try {
+          const newNotif = {
+            id: `notif-kyc-${Date.now()}`,
+            title: 'KYC Verification Update',
+            message: `Your KYC verification has been marked ${adminKycStatus} by Admin.${adminKycRejectionReason ? ' Reason: ' + adminKycRejectionReason : ''}`,
+            type: 'kyc',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: adminKycStatus === 'APPROVED' ? 'RESOLVED' : adminKycStatus === 'REJECTED' ? 'REJECTED' : 'INFO'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
         fetchSelectedUserKyc(selectedEntryUser);
       } else {
         addNotification(res.message || 'Failed to update KYC.');
@@ -1952,8 +2071,24 @@ export default function App() {
       });
       if (res.success) {
         addNotification(`Complaint Ticket ${ticketId} raised!`);
+        const sub = complainSubject;
+        const desc = complainDescription;
         setComplainDescription('');
         fetchUserComplaints(userEmail);
+        try {
+          const newNotif = {
+            id: `notif-comp-submitted-${Date.now()}`,
+            title: `Complaint Ticket Raised: ${ticketId}`,
+            message: `Subject: ${sub || 'General Inquiry'} • Details: ${desc.slice(0, 90)}... (Awaiting Admin reply)`,
+            type: 'complain',
+            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            status: 'PENDING'
+          };
+          const saved = localStorage.getItem('crwo_user_telemetry');
+          const list = saved ? JSON.parse(saved) : [];
+          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
+          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
+        } catch (e) {}
       } else { addNotification(res.message || 'Failed to submit complaint.'); }
     } catch (err) { console.error(err); addNotification('Connection error.'); }
     finally { setComplainSubmitLoading(false); }
@@ -2846,27 +2981,43 @@ export default function App() {
                       setAdminFormTab(req.moduleTab || 'entry');
                       setSelectedEntryUser(req.email);
                       setIsAdminNotificationOpen(false);
+
+                      // Hide touched request from telemetry feed immediately
+                      setAdminPendingRequests(prev => prev.filter(p => p.id !== req.id));
+
+                      // Persist dismissal in localStorage so it stays hidden in this session
+                      try {
+                        const raw = localStorage.getItem('crwo_admin_dismissed_pending');
+                        const dismissed: string[] = raw ? JSON.parse(raw) : [];
+                        if (!dismissed.includes(req.id)) {
+                          dismissed.push(req.id);
+                          localStorage.setItem('crwo_admin_dismissed_pending', JSON.stringify(dismissed.slice(-100)));
+                        }
+                      } catch (e) {}
+
                       addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
                     }}
-                    className="p-4 rounded-2xl border border-slate-800 bg-slate-900/80 hover:border-amber-500/40 hover:bg-slate-900 transition cursor-pointer text-left space-y-2 group"
+                    className="p-4 rounded-2xl border border-slate-800 bg-slate-900/80 hover:border-amber-500/60 hover:bg-slate-900 active:scale-[0.99] transition-all duration-200 cursor-pointer text-left space-y-2 group shadow-lg"
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-black uppercase tracking-widest font-mono text-teal-400">
                         {req.userId || 'MEMBER'}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/15 border border-amber-500/40 text-amber-300">
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/50 text-amber-300">
                         ● PENDING
                       </span>
                     </div>
                     <div className="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">
                       {req.title}
                     </div>
-                    <div className="text-xs text-slate-400 break-all">
+                    <div className="text-xs text-slate-300 break-all leading-relaxed bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60">
                       {req.details || req.email}
                     </div>
                     <div className="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[10px] text-slate-500">
-                      <span className="truncate">{req.email}</span>
-                      <span className="text-teal-400 font-semibold shrink-0">Tap to Resolve →</span>
+                      <span className="truncate text-slate-400 font-mono">{req.email}</span>
+                      <span className="text-teal-400 font-semibold shrink-0 group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                        Tap to Resolve & Open Module →
+                      </span>
                     </div>
                   </div>
                 ))
@@ -2915,26 +3066,42 @@ export default function App() {
                 userTelemetryNotifications.map((n) => (
                   <div
                     key={n.id}
-                    className={`p-3 rounded-xl border text-left space-y-1 transition ${
+                    onClick={() => handleUserNotificationClick(n)}
+                    className={`p-3.5 rounded-xl border text-left space-y-1.5 transition cursor-pointer hover:scale-[1.01] active:scale-[0.98] group ${
                       n.status === 'RESOLVED'
-                        ? 'border-emerald-500/40 bg-emerald-500/10'
-                        : 'border-slate-800 bg-slate-900/60'
+                        ? 'border-emerald-500/40 bg-emerald-500/10 hover:border-emerald-400'
+                        : n.status === 'REJECTED'
+                        ? 'border-rose-500/40 bg-rose-500/10 hover:border-rose-400'
+                        : 'border-slate-800 bg-slate-900/60 hover:border-teal-500/50 hover:bg-slate-900'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-[10px] font-bold font-orbitron uppercase tracking-wider ${
-                        n.status === 'RESOLVED' ? 'text-emerald-400' : 'text-teal-400'
+                        n.status === 'RESOLVED' ? 'text-emerald-400' : n.status === 'REJECTED' ? 'text-rose-400' : 'text-teal-400'
                       }`}>
                         {n.title}
                       </span>
                       <span className="text-[9px] font-mono text-slate-500">{n.timestamp}</span>
                     </div>
                     <p className="text-xs text-slate-300 leading-relaxed">{n.message}</p>
-                    {n.status === 'RESOLVED' && (
-                      <span className="inline-block mt-1 px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                        ✓ REQUEST IS RESOLVED
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-800/40">
+                      {n.status === 'RESOLVED' ? (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          ✓ REQUEST RESOLVED
+                        </span>
+                      ) : n.status === 'REJECTED' ? (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                          ✕ REJECTED
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                          ● UPDATE AVAILABLE
+                        </span>
+                      )}
+                      <span className="text-[10px] text-teal-400 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                        Tap to View Update →
                       </span>
-                    )}
+                    </div>
                   </div>
                 ))
               )}
@@ -8407,12 +8574,13 @@ export default function App() {
                           userTelemetryNotifications.map((n) => (
                             <div
                               key={n.id}
-                              className={`p-4 rounded-xl border text-left space-y-1.5 transition ${
+                              onClick={() => handleUserNotificationClick(n)}
+                              className={`p-4 rounded-xl border text-left space-y-2 transition cursor-pointer hover:scale-[1.01] active:scale-[0.98] group ${
                                 n.status === 'RESOLVED'
-                                  ? 'border-emerald-500/30 bg-emerald-500/5'
+                                  ? 'border-emerald-500/40 bg-emerald-500/5 hover:border-emerald-400/70 hover:bg-emerald-500/10'
                                   : n.status === 'REJECTED'
-                                  ? 'border-rose-500/30 bg-rose-500/5'
-                                  : 'border-amber-500/30 bg-amber-500/5'
+                                  ? 'border-rose-500/40 bg-rose-500/5 hover:border-rose-400/70 hover:bg-rose-500/10'
+                                  : 'border-amber-500/40 bg-amber-500/5 hover:border-amber-400/70 hover:bg-amber-500/10'
                               }`}
                             >
                               <div className="flex items-center justify-between text-xs font-bold font-orbitron">
@@ -8430,10 +8598,12 @@ export default function App() {
                                   ● {n.status || 'PENDING'}
                                 </span>
                               </div>
-                              <p className="text-xs text-slate-300">{n.message || n.details}</p>
+                              <p className="text-xs text-slate-300 leading-relaxed">{n.message || n.details}</p>
                               <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-800/40">
                                 <span>{n.timestamp || 'Recent'}</span>
-                                <span className="font-mono text-teal-400">{n.type || 'SYSTEM ALERT'}</span>
+                                <span className="font-mono text-teal-400 font-semibold group-hover:translate-x-1 transition-transform flex items-center gap-1">
+                                  Tap to View Update & Open Module →
+                                </span>
                               </div>
                             </div>
                           ))
