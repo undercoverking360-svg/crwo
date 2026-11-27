@@ -31,7 +31,7 @@ export const AnonymousLogo: React.FC<AnonymousLogoProps> = ({
   };
 
   return (
-    <div className={`flex flex-col items-center justify-center text-center p-6 rounded-2xl border border-slate-800 bg-slate-950/60 backdrop-blur-xl max-w-md mx-auto my-6 shadow-2xl relative overflow-hidden ${className}`}>
+    <div className={`flex flex-col items-center justify-center text-center p-4 sm:p-6 rounded-2xl border border-slate-800 bg-slate-950/70 backdrop-blur-xl w-full max-w-sm sm:max-w-md mx-auto my-4 sm:my-6 shadow-2xl relative overflow-hidden ${className}`}>
       {/* Background Ambient Glow */}
       <div className="absolute -top-16 -left-16 w-40 h-40 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
       <div className="absolute -bottom-16 -right-16 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>

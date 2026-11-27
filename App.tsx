@@ -3657,7 +3657,7 @@ export default function App() {
       </header>
 
       {/* DASHBOARD LAYOUT */}
-      <div className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${isAdminNotificationOpen ? 'hidden' : ''}`}>
+      <div className={`w-full max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-4 sm:py-8 ${isAdminNotificationOpen ? 'hidden' : ''}`}>
         
         {/* MOBILE NAVIGATION BAR (horizontal scrollable, centered if admin app / single tab) */}
         <div className={`lg:hidden w-full overflow-x-auto flex ${isNativeAdminApp || navItems.length === 1 ? 'justify-center' : ''} gap-2 pb-3 mb-5 shrink-0 select-none`}>
@@ -3782,14 +3782,18 @@ export default function App() {
 
           {/* MAIN CONTENT AREA */}
           <main className={isNativeAdminApp ? "col-span-1 lg:col-span-4" : "col-span-1 lg:col-span-3"}>
-            <div className={`rounded-2xl border p-6 min-h-[500px] ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
+            <div className={`rounded-2xl ${activeTab === 'admin' && !adminAuthenticated ? 'border-0 p-0 bg-transparent' : 'border p-4 sm:p-6'} min-h-[500px] ${
+              activeTab === 'admin' && !adminAuthenticated 
+                ? '' 
+                : (darkMode ? 'glass-card border-slate-800' : 'glass-card-light border-slate-200')
+            }`}>
               {/* ADMIN VIEW */}
               {activeTab === 'admin' && !isNativeUserApp && (
                 !adminAuthenticated ? (
-                  <div className="max-w-md mx-auto py-8">
-                    <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="w-full max-w-[370px] mx-auto py-4 sm:py-8 px-2 sm:px-0">
+                    <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-slate-950/80 border-slate-800 shadow-2xl' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="text-center mb-6">
-                        <CrwoLogo className="w-48 h-48 mx-auto mb-4" />
+                        <CrwoLogo className="w-36 h-36 mx-auto mb-4" />
                         <h2 className="text-base font-bold uppercase tracking-wider font-orbitron">Admin Login Gate</h2>
                         <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                           Secure Panel • CRWO personnel only.
