@@ -90,44 +90,74 @@ const saveLocalCommunityLinks = (list: any[]) => {
 // ----------------------------------------------------
 // REAL-TIME CLOUD SECURITY ENGINE (Global Shared Sync via Google Apps Script)
 // ----------------------------------------------------
-async function fetchCloudSecurity(): Promise<{ blacklist: any[]; devices: any[] }> {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 4500);
-    const res = await fetch(`${GOOGLE_SCRIPT_SECURITY_URL}?action=getComplaints`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'getComplaints', email: SECURITY_REGISTRY_EMAIL }),
-      signal: controller.signal
-    });
-    clearTimeout(timer);
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
-        const secEntries = json.data.filter((d: any) => d && (d.subject === 'SECURITY_REGISTRY' || safeStr(d.ticketId).startsWith('SEC-')));
-        const latestEntry = secEntries.length > 0 ? secEntries[secEntries.length - 1] : json.data[json.data.length - 1];
-        if (latestEntry && latestEntry.description) {
-          try {
-            const parsed = JSON.parse(latestEntry.description);
-            const bl = Array.isArray(parsed.blacklist) ? parsed.blacklist : [];
-            const dev = Array.isArray(parsed.devices) ? parsed.devices : [];
-            saveLocalBlacklist(bl);
-            saveLocalDevices(dev);
-            return { blacklist: bl, devices: dev };
-          } catch {}
+let inFlightSecurityFetch: Promise<{ blacklist: any[]; devices: any[] }> | null = null;
+let lastSecurityFetchTime = 0;
+let cachedSecurityData: { blacklist: any[]; devices: any[] } | null = null;
+
+async function fetchCloudSecurity(forceFresh = false): Promise<{ blacklist: any[]; devices: any[] }> {
+  if (!forceFresh && cachedSecurityData && (Date.now() - lastSecurityFetchTime < 3000)) {
+    return cachedSecurityData;
+  }
+  if (inFlightSecurityFetch) {
+    return inFlightSecurityFetch;
+  }
+
+  inFlightSecurityFetch = (async () => {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 6000);
+      const res = await fetch(`${GOOGLE_SCRIPT_SECURITY_URL}?action=getComplaints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'getComplaints', email: SECURITY_REGISTRY_EMAIL }),
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const secEntries = json.data.filter((d: any) => d && (d.subject === 'SECURITY_REGISTRY' || safeStr(d.ticketId).startsWith('SEC-')));
+          // Google Apps Script can return records in descending order. Sort by slNo descending to guarantee index 0 is NEWEST.
+          secEntries.sort((a: any, b: any) => (Number(b.slNo) || 0) - (Number(a.slNo) || 0));
+          const latestEntry = secEntries[0] || json.data[0];
+          if (latestEntry && latestEntry.description) {
+            try {
+              const parsed = JSON.parse(latestEntry.description);
+              const bl = Array.isArray(parsed.blacklist) ? parsed.blacklist : [];
+              const dev = Array.isArray(parsed.devices) ? parsed.devices : [];
+              saveLocalBlacklist(bl);
+              saveLocalDevices(dev);
+              cachedSecurityData = { blacklist: bl, devices: dev };
+              lastSecurityFetchTime = Date.now();
+              return { blacklist: bl, devices: dev };
+            } catch {}
+          }
         }
       }
+    } catch (err) {
+      // Fall back to local storage if offline or timeout
+    } finally {
+      inFlightSecurityFetch = null;
     }
-  } catch (err) {
-    // Fall back to local storage if offline or timeout
-  }
-  return { blacklist: getLocalBlacklist(), devices: getLocalDevices() };
+    const fallback = { blacklist: getLocalBlacklist(), devices: getLocalDevices() };
+    cachedSecurityData = fallback;
+    lastSecurityFetchTime = Date.now();
+    return fallback;
+  })();
+
+  return inFlightSecurityFetch;
 }
 
 async function pushCloudSecurity(blacklist: any[], devices: any[]): Promise<void> {
+  // Update local storage and memory cache immediately
+  saveLocalBlacklist(blacklist);
+  saveLocalDevices(devices);
+  cachedSecurityData = { blacklist, devices };
+  lastSecurityFetchTime = Date.now();
+
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
+    const timer = setTimeout(() => controller.abort(), 6000);
     await fetch(`${GOOGLE_SCRIPT_SECURITY_URL}?action=addComplain`, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },

@@ -5406,8 +5406,8 @@ export default function App() {
                                       addNotification(`Successfully blacklisted target!`);
                                       setBlacklistValue('');
                                       setBlacklistReason('');
-                                      fetchSecurityData();
-                                      fetchRegisteredUsers();
+                                      await fetchSecurityData();
+                                      await fetchRegisteredUsers();
                                     } else {
                                       addNotification(res.message || "Failed to block.");
                                     }
@@ -5607,8 +5607,8 @@ export default function App() {
                                               });
                                               if (res.success) {
                                                 addNotification("Entity successfully unblocked.");
-                                                fetchSecurityData();
-                                                fetchRegisteredUsers();
+                                                await fetchSecurityData();
+                                                await fetchRegisteredUsers();
                                               }
                                             } catch (e) {
                                               console.error(e);
