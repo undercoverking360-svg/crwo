@@ -45,7 +45,9 @@ import {
   Filter,
   X,
   SlidersHorizontal,
-  Trash2
+  Trash2,
+  Smartphone,
+  Sparkles
 } from 'lucide-react';
 
 import { verifyAdminWithFirebase, verifyTrafficPasscodeWithFirebase, verifySearchPasscodeWithFirebase } from './firebase';
@@ -796,6 +798,9 @@ export default function App() {
   const [commLogo, setCommLogo] = useState('');
   const [commJoinLink, setCommJoinLink] = useState('');
   const [commSubmitLoading, setCommSubmitLoading] = useState(false);
+
+  // Dedicated Mobile App Download Modal state
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
 
   // Search Button Modal state
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -3395,6 +3400,21 @@ export default function App() {
                 </button>
               </div>
 
+              {/* Mobile Dedicated Download Banner for Website */}
+              <button 
+                onClick={() => setDownloadModalOpen(true)}
+                className="w-full py-1.5 px-3 rounded-lg flex items-center justify-between border text-[11px] font-bold transition-all duration-200 active:scale-[0.98] cursor-pointer bg-gradient-to-r from-teal-500/15 via-emerald-500/20 to-cyan-500/15 border-teal-500/35 text-teal-300 hover:text-white shadow-[0_0_12px_rgba(20,184,166,0.15)] mt-0.5"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Smartphone className="w-3.5 h-3.5 text-teal-400 animate-pulse" />
+                  <span>Download CRWO Android App</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono bg-teal-500/25 text-teal-200 border border-teal-500/30 font-bold">v2.11.0</span>
+                  <Download className="w-3 h-3 text-teal-400" />
+                </div>
+              </button>
+
               {/* Row 3: Call Help & Actions (Theme Toggle & Login/Signup/Logout) */}
               <div className="flex items-center justify-between gap-2 w-full mt-0.5">
                 {/* Hotline Call Button */}
@@ -3554,6 +3574,17 @@ export default function App() {
               <span>Community Chat</span>
             </button>
 
+            {/* Dedicated App Download Button */}
+            <button 
+              onClick={() => setDownloadModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-lg flex items-center gap-2 border text-xs font-bold transition-all duration-200 cursor-pointer bg-gradient-to-r from-teal-500/15 via-emerald-500/20 to-cyan-500/15 hover:from-teal-500/25 hover:to-cyan-500/25 border-teal-500/40 text-teal-300 hover:text-white shadow-[0_0_15px_rgba(20,184,166,0.15)] active:scale-95"
+              title="Download CRWO Android Apps"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-teal-400" />
+              <span>Download App</span>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-teal-500/30 text-teal-200 border border-teal-400/30">APK</span>
+            </button>
+
             {/* Hotline Call */}
             <button 
               onClick={() => { 
@@ -3694,6 +3725,27 @@ export default function App() {
                     );
                   })}
                 </nav>
+
+                {/* Sidebar Native Mobile Apps Card */}
+                <div className={`mt-4 p-3 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-teal-500/20 hover:border-teal-500/40' : 'bg-slate-50 border-teal-200'} transition-all`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 font-bold text-teal-400 text-xs">
+                      <Smartphone className="w-3.5 h-3.5" />
+                      <span>CRWO Android Apps</span>
+                    </div>
+                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono bg-teal-500/20 text-teal-300 border border-teal-500/30 font-bold">v2.11.0</span>
+                  </div>
+                  <p className={`text-[10px] leading-relaxed mb-2.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Directly install official CRWO Member or Admin native APKs for smooth performance.
+                  </p>
+                  <button
+                    onClick={() => setDownloadModalOpen(true)}
+                    className="w-full py-1.5 rounded-lg flex items-center justify-center gap-1.5 text-xs font-bold bg-teal-500 hover:bg-teal-400 text-slate-950 transition-all duration-200 cursor-pointer shadow-md shadow-teal-500/20 active:scale-98"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Get Mobile Apps</span>
+                  </button>
+                </div>
 
                 {/* Sidebar Footer Widget */}
                 <div className={`mt-6 pt-6 border-t ${darkMode ? 'border-slate-850' : 'border-slate-100'} text-xs`}>
@@ -11510,6 +11562,188 @@ export default function App() {
                 }`}
               >
                 Close Directory
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* DEDICATED APP DOWNLOADS MODAL */}
+      {downloadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-4xl p-5 sm:p-7 rounded-3xl border shadow-2xl relative max-h-[92vh] overflow-y-auto custom-scrollbar ${
+            darkMode ? 'bg-slate-900/95 border-teal-500/25 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b pb-4 mb-5 border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400">
+                  <Smartphone className="w-6 h-6 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg sm:text-xl font-bold font-orbitron uppercase tracking-wider text-teal-400">
+                      CRWO Official Mobile Apps
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                      v2.11.0
+                    </span>
+                  </div>
+                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    High-performance native Android apps built for fast execution, offline stability & push notifications.
+                  </p>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button 
+                onClick={() => setDownloadModalOpen(false)}
+                className={`p-2 rounded-xl border transition cursor-pointer ${
+                  darkMode ? 'border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
+                }`}
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Apps Grid (2 Cards: User & Admin) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+              
+              {/* CARD 1: CRWO Member App */}
+              <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden ${
+                darkMode ? 'bg-slate-950/60 border-emerald-500/30 hover:border-emerald-500/50' : 'bg-slate-50 border-emerald-300'
+              } transition-all duration-200`}>
+                <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500/15 border-b border-l border-emerald-500/30 rounded-bl-xl text-[9px] font-bold text-emerald-400 tracking-wider">
+                  ● FOR MEMBERS
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-bold">
+                      <CreditCard className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white font-orbitron">CRWO Member Portal</h3>
+                      <p className="text-[10px] text-emerald-400 font-mono">CRWO-User.apk • 4.1 MB</p>
+                    </div>
+                  </div>
+
+                  <p className={`text-xs leading-relaxed mb-4 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    Complete member suite with fast KYC submissions, Welfare Plans, Cheque Desk tracking, Salary Advance requests, and instant system push notifications.
+                  </p>
+
+                  <div className={`space-y-2 mb-5 p-3 rounded-xl border text-[11px] ${
+                    darkMode ? 'bg-slate-900/60 border-slate-800/80 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span><strong>No Admin/Traffic tabs:</strong> 100% focused on user needs</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span><strong>Push Notifications:</strong> Real-time alerts on ticket updates</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span><strong>Equal-Height Layout:</strong> Dedicated custom scrollbars</span>
+                    </div>
+                  </div>
+                </div>
+
+                <a 
+                  href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.0/CRWO-User.apk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-emerald-500/20 active:scale-98 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Member App (4.1 MB)</span>
+                </a>
+              </div>
+
+              {/* CARD 2: CRWO Admin Console */}
+              <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden ${
+                darkMode ? 'bg-slate-950/60 border-rose-500/30 hover:border-rose-500/50' : 'bg-slate-50 border-rose-300'
+              } transition-all duration-200`}>
+                <div className="absolute top-0 right-0 px-3 py-1 bg-rose-500/15 border-b border-l border-rose-500/30 rounded-bl-xl text-[9px] font-bold text-rose-400 tracking-wider">
+                  🛡️ OFFICIAL ONLY
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 font-bold">
+                      <ShieldAlert className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-white font-orbitron">CRWO Admin Terminal</h3>
+                      <p className="text-[10px] text-rose-400 font-mono">CRWO-Admin.apk • 4.1 MB</p>
+                    </div>
+                  </div>
+
+                  <p className={`text-xs leading-relaxed mb-4 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    High-security administration terminal with full-width Operations Dashboard, Members Registry, Bank Account Status, Clearance Desks, Security Blacklist, and Live Telemetry.
+                  </p>
+
+                  <div className={`space-y-2 mb-5 p-3 rounded-xl border text-[11px] ${
+                    darkMode ? 'bg-slate-900/60 border-slate-800/80 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span><strong>Isolated Workspace:</strong> Zero user login or tab clutter</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span><strong>Security Registry:</strong> Descending cloud ledger sync</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span><strong>Full Operations:</strong> Direct Traffic & Search Gateway</span>
+                    </div>
+                  </div>
+                </div>
+
+                <a 
+                  href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.0/CRWO-Admin.apk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-slate-950 flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-rose-500/20 active:scale-98 cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Admin App (4.1 MB)</span>
+                </a>
+              </div>
+
+            </div>
+
+            {/* Installation Instructions Box */}
+            <div className={`p-4 rounded-2xl border text-xs leading-relaxed ${
+              darkMode ? 'bg-slate-950/40 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+            }`}>
+              <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-teal-400 mb-2">
+                <Info className="w-4 h-4" />
+                <span>How to Install on Android</span>
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-[11px]">
+                <li>Tap the green or red button above to download your required APK.</li>
+                <li>Open the downloaded <code className="px-1.5 py-0.5 rounded bg-slate-800 text-teal-300 font-mono">.apk</code> file from your browser downloads or Files app.</li>
+                <li>If Android or Chrome asks for permission, tap <strong>"Settings"</strong> and toggle <strong>"Allow from this source"</strong>.</li>
+                <li>If Google Play Protect displays a prompt, tap <strong>"More details"</strong> → <strong>"Install anyway"</strong> (our APK is signed directly with our developer keystore).</li>
+              </ol>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="mt-5 pt-4 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+              <span>Android 7.0 to 15+ Supported • v2/v3 Signed</span>
+              <button
+                onClick={() => setDownloadModalOpen(false)}
+                className={`px-4 py-1.5 rounded-lg border font-bold text-xs transition cursor-pointer ${
+                  darkMode ? 'border-slate-800 hover:bg-slate-850 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                }`}
+              >
+                Close
               </button>
             </div>
 
