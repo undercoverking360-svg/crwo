@@ -2726,6 +2726,29 @@ export default function App() {
     <div className={`min-h-screen font-sans ${darkMode ? 'crypto-bg-dark text-slate-100' : 'crypto-bg-light text-slate-800'} transition-colors duration-300 relative overflow-x-hidden`}>
       <WaveBackground darkMode={darkMode} />
 
+      {/* Global Embedded Scrollbar & Scroller Styling */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(15, 23, 42, 0.4);
+          border-radius: 99px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(20, 184, 166, 0.5);
+          border-radius: 99px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(20, 184, 166, 0.9);
+        }
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(20, 184, 166, 0.5) rgba(15, 23, 42, 0.4);
+        }
+      `}</style>
+
       {/* BLOCKED DEVICE SCREEN */}
       {isBlocked && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/98 backdrop-blur-xl">
@@ -5547,7 +5570,10 @@ export default function App() {
                                 <p className="mt-1">Fill the form on the left to add a secured bank account profile for this member.</p>
                               </div>
                             ) : (
-                              <div className="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-1.5 custom-scrollbar">
+                              <div 
+                                className="space-y-3 flex-1 overflow-y-auto max-h-[600px] pr-1.5 custom-scrollbar"
+                                style={{ maxHeight: '600px', overflowY: 'auto' }}
+                              >
                                   {Array.isArray(selectedUserBankAccounts) && selectedUserBankAccounts.map((bank, idx) => {
                                     const isInactive = bank.accountStatus === 'INACTIVE';
                                     return (
@@ -6496,7 +6522,7 @@ export default function App() {
                   ) : (
                     <div className="space-y-6">
                       {/* Member Bank Details Profile Section: 2-Column Grid */}
-                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+                      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
                         {/* LEFT COLUMN: BANK PROFILE REGISTRATION ENTRY FORM (span 2) */}
                         <div className="lg:col-span-2 flex flex-col space-y-4">
                           <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
@@ -6732,7 +6758,7 @@ export default function App() {
                         </div>
 
                         {/* RIGHT COLUMN: REGISTERED BANK PROFILES (READ-ONLY) (span 3) */}
-                        <div className="lg:col-span-3 flex flex-col space-y-4">
+                        <div className="lg:col-span-3 flex flex-col space-y-4 min-h-0">
                           <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
                             <h3 className="text-xs font-bold uppercase tracking-wider font-orbitron text-teal-400 flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-teal-400"></span>
@@ -6749,7 +6775,10 @@ export default function App() {
                             </button>
                           </div>
 
-                          <div className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
+                          <div 
+                            className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}
+                            style={{ maxHeight: '665px', minHeight: '320px' }}
+                          >
                             {userBankLoading ? (
                               <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
                                 <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
@@ -6762,7 +6791,10 @@ export default function App() {
                                 <p className="mt-1 text-slate-400 max-w-sm mx-auto">Fill in the registration form on the left to add your first secured bank profile.</p>
                               </div>
                             ) : (
-                              <div className="space-y-3.5 flex-1 overflow-y-auto max-h-[580px] pr-1.5 custom-scrollbar">
+                              <div 
+                                className="space-y-3.5 flex-1 overflow-y-auto pr-1.5 custom-scrollbar"
+                                style={{ maxHeight: '615px', overflowY: 'auto' }}
+                              >
                                 {Array.isArray(userBankDetails) && userBankDetails.map((bank, idx) => {
                                   const isInactive = bank.accountStatus === 'INACTIVE';
                                   return (
