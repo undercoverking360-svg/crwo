@@ -3686,7 +3686,7 @@ export default function App() {
           })}
         </div>
 
-        <div className={isNativeAdminApp ? "w-full" : "grid grid-cols-1 lg:grid-cols-4 gap-8"}>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
 
           {/* SIDEBAR NAVIGATION (Hidden in Admin APK for full-width workspace) */}
           {!isNativeAdminApp && (
@@ -3781,7 +3781,7 @@ export default function App() {
           )}
 
           {/* MAIN CONTENT AREA */}
-          <main className={isNativeAdminApp ? "w-full" : "lg:col-span-3"}>
+          <main className={isNativeAdminApp ? "col-span-1 lg:col-span-4" : "col-span-1 lg:col-span-3"}>
             <div className={`rounded-2xl border p-6 min-h-[500px] ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
               {/* ADMIN VIEW */}
               {activeTab === 'admin' && !isNativeUserApp && (
