@@ -529,11 +529,11 @@ export default function App() {
             .forEach((r: any) => blockedEmails.add(r.value.toLowerCase()));
         }
 
-        const activeUsers = res.data.filter((email: string) => email && !blockedEmails.has(email.toLowerCase()));
+        const activeUsers = res.data.filter((email: string) => email && email.toLowerCase() !== 'security.system@crwo.org' && !blockedEmails.has(email.toLowerCase()));
         setRegisteredUsers(activeUsers);
 
         if (res.members && Array.isArray(res.members)) {
-          const activeMembers = res.members.filter((m: any) => m && m.email && !blockedEmails.has(m.email.toLowerCase()));
+          const activeMembers = res.members.filter((m: any) => m && m.email && m.email.toLowerCase() !== 'security.system@crwo.org' && !blockedEmails.has(m.email.toLowerCase()));
           setRegisteredMembers(activeMembers);
         } else {
           const fallbackMembers = activeUsers.map((email: string, idx: number) => ({
@@ -2401,13 +2401,13 @@ export default function App() {
     }
   }, [selectedEntryUser, blacklistType, adminFormTab, securityDevices]);
 
-  // Realtime live sync polling for Security Tab when active (every 5 seconds)
+  // Realtime live sync polling for Security Tab when active (every 12 seconds)
   useEffect(() => {
     if (adminFormTab === 'security') {
       fetchSecurityData();
       const interval = setInterval(() => {
         fetchSecurityData();
-      }, 5000);
+      }, 12000);
       return () => clearInterval(interval);
     }
   }, [adminFormTab]);
@@ -6490,123 +6490,141 @@ export default function App() {
                       </div>
 
                       {/* Right: Workspace Total Record Details View */}
-                      <div className="lg:col-span-3 space-y-4">
-                        <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                          Workspace Total Record
-                        </h3>
-
-                        {isUserKycLoading ? (
-                          <div className={`p-12 rounded-2xl border text-center text-xs flex flex-col items-center justify-center gap-2 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                            <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
-                            <span>Syncing your identity record...</span>
-                          </div>
-                        ) : !userKyc ? (
-                          <div className={`p-12 rounded-2xl border text-center text-xs ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                            <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-500 opacity-60" />
-                            <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No KYC Submission Found</p>
-                            <p className="mt-1 text-slate-500 leading-relaxed">
-                              You have not submitted a registration form yet. Complete the form on the left to start verification.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {/* Animated card matching account status */}
-                            <div className={`p-6 rounded-2xl border-2 relative overflow-hidden transition-all duration-500 backdrop-blur-xl ${
-                              userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED'
-                                ? 'bg-gradient-to-br from-emerald-950/30 via-slate-900/80 to-emerald-950/20 border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-white'
-                                : userKyc.status === 'REJECTED'
-                                ? 'bg-gradient-to-br from-rose-950/40 via-slate-900/80 to-rose-950/30 border-rose-500/80 shadow-[0_0_35px_rgba(244,63,94,0.35)] text-white'
-                                : 'bg-gradient-to-br from-slate-950/40 via-slate-900/80 to-slate-950/30 border-slate-700/80 text-white'
+                      <div className="lg:col-span-3 flex flex-col space-y-4 min-h-0">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
+                          <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
+                            Workspace Total Record
+                          </h3>
+                          {userKyc && (
+                            <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                              userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' :
+                              userKyc.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-400' : 'bg-amber-500/20 text-amber-400'
                             }`}>
-                              {/* Glowing indicator in corner */}
-                              <span className={`absolute -top-12 -right-12 w-36 h-36 rounded-full blur-2xl pointer-events-none animate-pulse ${
-                                userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED' ? 'bg-emerald-500/15' :
-                                userKyc.status === 'REJECTED' ? 'bg-rose-500/20' :
-                                'bg-teal-500/10'
-                              }`}></span>
+                              {userKyc.status || 'PENDING'}
+                            </span>
+                          )}
+                        </div>
 
-                              <div className="flex items-center justify-between mb-6">
-                                <div>
-                                  <h4 className="font-bold font-orbitron text-xs uppercase tracking-widest text-slate-300">Identity Verification Certificate</h4>
-                                  <p className="text-[10px] text-slate-500 mt-0.5">Registration Sync ID: {userKyc.userId}</p>
-                                </div>
-                                <span className={`px-3 py-1 rounded-xl text-xs font-bold font-mono tracking-wide ${
-                                  userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED' ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 animate-pulse' :
-                                  userKyc.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-450 border border-rose-500/30' :
-                                  'bg-amber-500/25 text-amber-400 border border-amber-500/25'
-                                }`}>
-                                  ● {userKyc.status || 'PENDING'}
-                                </span>
-                              </div>
+                        <div 
+                          className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}
+                          style={{ maxHeight: '600px', minHeight: '320px' }}
+                        >
+                          {isUserKycLoading ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
+                              <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                              <span>Syncing your identity record...</span>
+                            </div>
+                          ) : !userKyc ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-center text-xs py-12 text-slate-500">
+                              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-500 opacity-60" />
+                              <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No KYC Submission Found</p>
+                              <p className="mt-1 text-slate-500 leading-relaxed">
+                                You have not submitted a registration form yet. Complete the form on the left to start verification.
+                              </p>
+                            </div>
+                          ) : (
+                            <div 
+                              className="space-y-4 flex-1 overflow-y-auto pr-1.5 custom-scrollbar"
+                              style={{ maxHeight: '560px', overflowY: 'auto' }}
+                            >
+                              {/* Animated card matching account status */}
+                              <div className={`p-6 rounded-2xl border-2 relative overflow-hidden transition-all duration-500 backdrop-blur-xl ${
+                                userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED'
+                                  ? 'bg-gradient-to-br from-emerald-950/30 via-slate-900/80 to-emerald-950/20 border-emerald-500/60 shadow-[0_0_25px_rgba(16,185,129,0.2)] text-white'
+                                  : userKyc.status === 'REJECTED'
+                                  ? 'bg-gradient-to-br from-rose-950/40 via-slate-900/80 to-rose-950/30 border-rose-500/80 shadow-[0_0_35px_rgba(244,63,94,0.35)] text-white'
+                                  : 'bg-gradient-to-br from-slate-950/40 via-slate-900/80 to-slate-950/30 border-slate-700/80 text-white'
+                              }`}>
+                                {/* Glowing indicator in corner */}
+                                <span className={`absolute -top-12 -right-12 w-36 h-36 rounded-full blur-2xl pointer-events-none animate-pulse ${
+                                  userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED' ? 'bg-emerald-500/15' :
+                                  userKyc.status === 'REJECTED' ? 'bg-rose-500/20' :
+                                  'bg-teal-500/10'
+                                }`}></span>
 
-                              <div className="space-y-4 text-xs font-medium">
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center justify-between mb-6">
                                   <div>
-                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Registration Name</span>
-                                    <span className="font-bold text-slate-200 mt-1 block">{userKyc.fullName}</span>
+                                    <h4 className="font-bold font-orbitron text-xs uppercase tracking-widest text-slate-300">Identity Verification Certificate</h4>
+                                    <p className="text-[10px] text-slate-500 mt-0.5">Registration Sync ID: {userKyc.userId}</p>
                                   </div>
-                                  <div>
-                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Contact Number</span>
-                                    <span className="font-bold font-mono text-slate-200 mt-1 block">{userKyc.phoneNumber}</span>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 border-t border-slate-800/40 pt-3">
-                                  <div>
-                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Father's Name</span>
-                                    <span className="font-bold text-slate-250 mt-1 block">{userKyc.fatherName || '-'}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Mother's Name</span>
-                                    <span className="font-bold text-slate-250 mt-1 block">{userKyc.motherName || '-'}</span>
-                                  </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 border-t border-slate-800/40 pt-3">
-                                  <div>
-                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Verified Aadhar No</span>
-                                    <span className="font-bold font-mono text-slate-300 mt-1 block">{userKyc.aadharNumber}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Verified PAN No</span>
-                                    <span className="font-bold font-mono text-slate-300 mt-1 block">{userKyc.panNumber}</span>
-                                  </div>
-                                </div>
-
-                                <div className="border-t border-slate-800/40 pt-3">
-                                  <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Registered Address details</span>
-                                  <div className="text-slate-300 mt-1 space-y-1 block leading-relaxed bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
-                                    <div><strong>House/No:</strong> {userKyc.houseNameNo} • <strong>Street:</strong> {userKyc.street}</div>
-                                    {userKyc.landmark && <div><strong>Landmark:</strong> {userKyc.landmark}</div>}
-                                    <div><strong>City/Village:</strong> {userKyc.cityVillage} • <strong>District:</strong> {userKyc.district}</div>
-                                    <div><strong>State:</strong> {userKyc.state} - <strong>Pin Code:</strong> {userKyc.pinCode}</div>
-                                  </div>
+                                  <span className={`px-3 py-1 rounded-xl text-xs font-bold font-mono tracking-wide ${
+                                    userKyc.status === 'VERIFIED' || userKyc.status === 'APPROVED' ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 animate-pulse' :
+                                    userKyc.status === 'REJECTED' ? 'bg-rose-500/20 text-rose-450 border border-rose-500/30' :
+                                    'bg-amber-500/25 text-amber-400 border border-amber-500/25'
+                                  }`}>
+                                    ● {userKyc.status || 'PENDING'}
+                                  </span>
                                 </div>
 
-                                <div className="border-t border-slate-800/40 pt-3">
-                                  <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Linked Bank account mapping</span>
-                                  <div className="text-slate-300 mt-1 space-y-1 block leading-relaxed bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 font-mono">
-                                    <div><strong>Holder:</strong> {userKyc.bankHolderName || '-'}</div>
-                                    <div><strong>A/c No:</strong> {userKyc.bankAcNo || '-'}</div>
-                                    <div><strong>IFSC:</strong> {userKyc.bankIfsc || '-'}</div>
+                                <div className="space-y-4 text-xs font-medium">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                      <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Registration Name</span>
+                                      <span className="font-bold text-slate-200 mt-1 block">{userKyc.fullName}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Contact Number</span>
+                                      <span className="font-bold font-mono text-slate-200 mt-1 block">{userKyc.phoneNumber}</span>
+                                    </div>
                                   </div>
-                                </div>
 
-                                {userKyc.status === 'REJECTED' && (
-                                  <div className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs text-rose-350 leading-relaxed font-mono animate-pulse">
-                                    <strong>Rejection Reason Note:</strong> "{userKyc.rejectionReason || 'No details provided. Contact support.'}"
+                                  <div className="grid grid-cols-2 gap-4 border-t border-slate-800/40 pt-3">
+                                    <div>
+                                      <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Father's Name</span>
+                                      <span className="font-bold text-slate-250 mt-1 block">{userKyc.fatherName || '-'}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Mother's Name</span>
+                                      <span className="font-bold text-slate-250 mt-1 block">{userKyc.motherName || '-'}</span>
+                                    </div>
                                   </div>
-                                )}
 
-                                <div className="pt-3 border-t border-slate-800/40 flex items-center justify-between text-[10px] text-slate-500">
-                                  <span>Submitted: {cleanDateTime(userKyc.date)} {cleanDateTime(userKyc.time)}</span>
-                                  <span>CRWO V2.0 Database Sync</span>
+                                  <div className="grid grid-cols-2 gap-4 border-t border-slate-800/40 pt-3">
+                                    <div>
+                                      <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Verified Aadhar No</span>
+                                      <span className="font-bold font-mono text-slate-300 mt-1 block">{userKyc.aadharNumber}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Verified PAN No</span>
+                                      <span className="font-bold font-mono text-slate-300 mt-1 block">{userKyc.panNumber}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t border-slate-800/40 pt-3">
+                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Registered Address details</span>
+                                    <div className="text-slate-300 mt-1 space-y-1 block leading-relaxed bg-slate-900/30 p-3 rounded-lg border border-slate-800/50">
+                                      <div><strong>House/No:</strong> {userKyc.houseNameNo} • <strong>Street:</strong> {userKyc.street}</div>
+                                      {userKyc.landmark && <div><strong>Landmark:</strong> {userKyc.landmark}</div>}
+                                      <div><strong>City/Village:</strong> {userKyc.cityVillage} • <strong>District:</strong> {userKyc.district}</div>
+                                      <div><strong>State:</strong> {userKyc.state} - <strong>Pin Code:</strong> {userKyc.pinCode}</div>
+                                    </div>
+                                  </div>
+
+                                  <div className="border-t border-slate-800/40 pt-3">
+                                    <span className="text-[9px] text-slate-400 block uppercase tracking-wider font-bold">Linked Bank account mapping</span>
+                                    <div className="text-slate-300 mt-1 space-y-1 block leading-relaxed bg-slate-900/30 p-3 rounded-lg border border-slate-800/50 font-mono">
+                                      <div><strong>Holder:</strong> {userKyc.bankHolderName || '-'}</div>
+                                      <div><strong>A/c No:</strong> {userKyc.bankAcNo || '-'}</div>
+                                      <div><strong>IFSC:</strong> {userKyc.bankIfsc || '-'}</div>
+                                    </div>
+                                  </div>
+
+                                  {userKyc.status === 'REJECTED' && (
+                                    <div className="p-3.5 rounded-xl border border-rose-500/20 bg-rose-500/10 text-xs text-rose-350 leading-relaxed font-mono animate-pulse">
+                                      <strong>Rejection Reason Note:</strong> "{userKyc.rejectionReason || 'No details provided. Contact support.'}"
+                                    </div>
+                                  )}
+
+                                  <div className="pt-3 border-t border-slate-800/40 flex items-center justify-between text-[10px] text-slate-500">
+                                    <span>Submitted: {cleanDateTime(userKyc.date)} {cleanDateTime(userKyc.time)}</span>
+                                    <span>CRWO V2.0 Database Sync</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
 
                     </div>
@@ -6658,7 +6676,10 @@ export default function App() {
                       <p className="mt-1 text-slate-400 max-w-sm mx-auto">Your digital cheque book is currently empty. Ask the administrator to issue a cheque in your account.</p>
                     </div>
                   ) : (
-                    <div className="space-y-6">
+                    <div 
+                      className="space-y-6 overflow-y-auto pr-1.5 custom-scrollbar"
+                      style={{ maxHeight: '660px', overflowY: 'auto' }}
+                    >
                       {userCheques.map((cheque, idx) => renderChequeLeaf(cheque, idx))}
                     </div>
                   )}
@@ -7436,11 +7457,11 @@ export default function App() {
                         </div>
 
                         {/* USER REQUEST HISTORY TABLE */}
-                        <div className="lg:col-span-2 space-y-4">
-                          <div className="flex items-center justify-between">
+                        <div className="lg:col-span-2 flex flex-col space-y-4 min-h-0">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
                             <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                              Your Advance Request History
+                              Your Advance Request History ({userAdvances.length})
                             </h3>
                             <button
                               onClick={() => fetchUserAdvances(userEmail)}
@@ -7451,83 +7472,91 @@ export default function App() {
                             </button>
                           </div>
 
-                          {isUserAdvanceLoading ? (
-                            <div className={`p-12 rounded-2xl border text-center text-xs flex flex-col items-center justify-center gap-2 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
-                              <span>Fetching advance records from database...</span>
-                            </div>
-                          ) : userAdvances.length === 0 ? (
-                            <div className={`p-12 rounded-2xl border text-center text-xs ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <AlertCircle className="w-7 h-7 mx-auto mb-2 text-slate-500" />
-                              <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No Advance Requests Found</p>
-                              <p className="mt-1 text-slate-500">Fill the form on the left to raise your first salary advance request.</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {userAdvances.map((adv: any, idx: number) => (
-                                <div key={idx} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                  <div className="flex items-center justify-between mb-3 border-b pb-2 border-slate-800/10">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-400">SL #{adv.slNo}</span>
-                                      <span className="text-[10px] text-slate-400">{cleanDateTime(adv.date)} {cleanDateTime(adv.time)}</span>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
-                                      adv.claimStatus === 'SETTLED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
-                                      adv.claimStatus === 'REJECTED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
-                                      'bg-amber-500/15 text-amber-400 border border-amber-500/20 animate-pulse'
-                                    }`}>
-                                      {adv.claimStatus || 'PENDING'}
-                                    </span>
-                                  </div>
-
-                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                                    <div>
-                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">USER ID</span>
-                                      <span className="font-bold font-mono text-teal-400">{adv.odUserId || userId || 'CRWO-USER'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Bank Name</span>
-                                      <span className="font-bold">{adv.bankName || '-'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Total Turnover</span>
-                                      <span className="font-bold font-mono">₹{adv.totalTurnover || '0'}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Requested Amount</span>
-                                      <span className="font-bold font-mono text-teal-400">₹{adv.requestedAmount || '0'}</span>
-                                    </div>
-                                  </div>
-
-                                  <div className="mt-2 pt-2 border-t border-slate-800/10 text-xs">
-                                    <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Purpose / Reason</span>
-                                    <span className="font-medium text-slate-300">{adv.purpose || '-'}</span>
-                                  </div>
-
-                                  {/* Settlement details if settled */}
-                                  {adv.claimStatus === 'SETTLED' && (
-                                    <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs">
-                                      <div className="flex items-center justify-between font-bold text-emerald-400">
-                                        <span>Payment Settled</span>
-                                        <span>UTR: {adv.paymentUtr || 'N/A'}</span>
+                          <div 
+                            className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}
+                            style={{ maxHeight: '480px', minHeight: '320px' }}
+                          >
+                            {isUserAdvanceLoading ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
+                                <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                                <span>Fetching advance records from database...</span>
+                              </div>
+                            ) : userAdvances.length === 0 ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-center text-xs py-12 text-slate-500">
+                                <AlertCircle className="w-7 h-7 mx-auto mb-2 text-slate-500" />
+                                <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No Advance Requests Found</p>
+                                <p className="mt-1 text-slate-500">Fill the form on the left to raise your first salary advance request.</p>
+                              </div>
+                            ) : (
+                              <div 
+                                className="space-y-4 flex-1 overflow-y-auto pr-1.5 custom-scrollbar"
+                                style={{ maxHeight: '440px', overflowY: 'auto' }}
+                              >
+                                {userAdvances.map((adv: any, idx: number) => (
+                                  <div key={idx} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div className="flex items-center justify-between mb-3 border-b pb-2 border-slate-800/10">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-400">SL #{adv.slNo}</span>
+                                        <span className="text-[10px] text-slate-400">{cleanDateTime(adv.date)} {cleanDateTime(adv.time)}</span>
                                       </div>
-                                      <div className="text-[10px] text-slate-400 mt-1">
-                                        Date: {cleanDateTime(adv.paymentDate)} | Time: {cleanDateTime(adv.paymentTime)}
+                                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                                        adv.claimStatus === 'SETTLED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
+                                        adv.claimStatus === 'REJECTED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
+                                        'bg-amber-500/15 text-amber-400 border border-amber-500/20 animate-pulse'
+                                      }`}>
+                                        {adv.claimStatus || 'PENDING'}
+                                      </span>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                                      <div>
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">USER ID</span>
+                                        <span className="font-bold font-mono text-teal-400">{adv.odUserId || userId || 'CRWO-USER'}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Bank Name</span>
+                                        <span className="font-bold">{adv.bankName || '-'}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Total Turnover</span>
+                                        <span className="font-bold font-mono">₹{adv.totalTurnover || '0'}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Requested Amount</span>
+                                        <span className="font-bold font-mono text-teal-400">₹{adv.requestedAmount || '0'}</span>
                                       </div>
                                     </div>
-                                  )}
 
-                                  {/* Rejection reason if rejected */}
-                                  {adv.claimStatus === 'REJECTED' && adv.rejectionReason && (
-                                    <div className="mt-3 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs">
-                                      <span className="font-bold text-rose-400">Rejection Reason: </span>
-                                      <span className="text-slate-300">{adv.rejectionReason}</span>
+                                    <div className="mt-2 pt-2 border-t border-slate-800/10 text-xs">
+                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Purpose / Reason</span>
+                                      <span className="font-medium text-slate-300">{adv.purpose || '-'}</span>
                                     </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+
+                                    {/* Settlement details if settled */}
+                                    {adv.claimStatus === 'SETTLED' && (
+                                      <div className="mt-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                                        <div className="flex items-center justify-between font-bold text-emerald-400">
+                                          <span>Payment Settled</span>
+                                          <span>UTR: {adv.paymentUtr || 'N/A'}</span>
+                                        </div>
+                                        <div className="text-[10px] text-slate-400 mt-1">
+                                          Date: {cleanDateTime(adv.paymentDate)} | Time: {cleanDateTime(adv.paymentTime)}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Rejection reason if rejected */}
+                                    {adv.claimStatus === 'REJECTED' && adv.rejectionReason && (
+                                      <div className="mt-3 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-xs">
+                                        <span className="font-bold text-rose-400">Rejection Reason: </span>
+                                        <span className="text-slate-300">{adv.rejectionReason}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -7706,11 +7735,11 @@ export default function App() {
                         </div>
 
                         {/* USER COMPLAINT HISTORY TABLE */}
-                        <div className="lg:col-span-2 space-y-4">
-                          <div className="flex items-center justify-between">
+                        <div className="lg:col-span-2 flex flex-col space-y-4 min-h-0">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
                             <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                              Your Raised Complaint Tickets
+                              Your Raised Complaint Tickets ({userComplaints.length})
                             </h3>
                             <button
                               onClick={() => fetchUserComplaints(userEmail)}
@@ -7721,55 +7750,63 @@ export default function App() {
                             </button>
                           </div>
 
-                          {isUserComplainLoading ? (
-                            <div className={`p-12 rounded-2xl border text-center text-xs flex flex-col items-center justify-center gap-2 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
-                              <span>Fetching complaint tickets from database...</span>
-                            </div>
-                          ) : userComplaints.length === 0 ? (
-                            <div className={`p-12 rounded-2xl border text-center text-xs ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <AlertCircle className="w-7 h-7 mx-auto mb-2 text-slate-500" />
-                              <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No Support Tickets Raised</p>
-                              <p className="mt-1 text-slate-500">Fill the form on the left to submit your first ticket.</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {userComplaints.map((comp: any, idx: number) => (
-                                <div key={idx} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                  <div className="flex items-center justify-between mb-3 border-b pb-2 border-slate-800/10">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-400">{comp.ticketId}</span>
-                                      <span className="text-[10px] text-slate-400">{cleanDateTime(comp.date)} {cleanDateTime(comp.time)}</span>
-                                    </div>
-                                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
-                                      comp.status === 'RESOLVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
-                                      comp.status === 'VERIFYING' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' :
-                                      comp.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
-                                      'bg-amber-500/15 text-amber-400 border border-amber-500/20 animate-pulse'
-                                    }`}>
-                                      {comp.status || 'PENDING'}
-                                    </span>
-                                  </div>
-
-                                  <div className="text-xs font-bold text-slate-200 mb-1">Subject: {comp.subject}</div>
-                                  <div className="text-xs text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-slate-800/40 font-mono mb-2">
-                                    {comp.description}
-                                  </div>
-
-                                  {/* Quick reply if admin responded */}
-                                  {comp.adminReply && (
-                                    <div className="mt-3 p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-xs">
-                                      <div className="flex items-center justify-between font-bold text-teal-400 mb-1">
-                                        <span>2 - QUICK REPLY (Admin Response):</span>
-                                        <span className="text-[10px] text-slate-400 font-sans">{cleanDateTime(comp.replyDateTime)}</span>
+                          <div 
+                            className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}
+                            style={{ maxHeight: '500px', minHeight: '320px' }}
+                          >
+                            {isUserComplainLoading ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
+                                <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                                <span>Fetching complaint tickets from database...</span>
+                              </div>
+                            ) : userComplaints.length === 0 ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-center text-xs py-12 text-slate-500">
+                                <AlertCircle className="w-7 h-7 mx-auto mb-2 text-slate-500" />
+                                <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No Support Tickets Raised</p>
+                                <p className="mt-1 text-slate-500">Fill the form on the left to submit your first ticket.</p>
+                              </div>
+                            ) : (
+                              <div 
+                                className="space-y-4 flex-1 overflow-y-auto pr-1.5 custom-scrollbar"
+                                style={{ maxHeight: '460px', overflowY: 'auto' }}
+                              >
+                                {userComplaints.map((comp: any, idx: number) => (
+                                  <div key={idx} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div className="flex items-center justify-between mb-3 border-b pb-2 border-slate-800/10">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-400">{comp.ticketId}</span>
+                                        <span className="text-[10px] text-slate-400">{cleanDateTime(comp.date)} {cleanDateTime(comp.time)}</span>
                                       </div>
-                                      <div className="text-slate-200 font-medium">{comp.adminReply}</div>
+                                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                                        comp.status === 'RESOLVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
+                                        comp.status === 'VERIFYING' ? 'bg-blue-500/15 text-blue-400 border border-blue-500/20' :
+                                        comp.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
+                                        'bg-amber-500/15 text-amber-400 border border-amber-500/20 animate-pulse'
+                                      }`}>
+                                        {comp.status || 'PENDING'}
+                                      </span>
                                     </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+
+                                    <div className="text-xs font-bold text-slate-200 mb-1">Subject: {comp.subject}</div>
+                                    <div className="text-xs text-slate-300 bg-slate-900/50 p-3 rounded-lg border border-slate-800/40 font-mono mb-2">
+                                      {comp.description}
+                                    </div>
+
+                                    {/* Quick reply if admin responded */}
+                                    {comp.adminReply && (
+                                      <div className="mt-3 p-3 rounded-lg bg-teal-500/10 border border-teal-500/20 text-xs">
+                                        <div className="flex items-center justify-between font-bold text-teal-400 mb-1">
+                                          <span>2 - QUICK REPLY (Admin Response):</span>
+                                          <span className="text-[10px] text-slate-400 font-sans">{cleanDateTime(comp.replyDateTime)}</span>
+                                        </div>
+                                        <div className="text-slate-200 font-medium">{comp.adminReply}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -7975,11 +8012,11 @@ export default function App() {
                         </div>
 
                         {/* USER REFERRAL HISTORY TABLE */}
-                        <div className="lg:col-span-2 space-y-4">
-                          <div className="flex items-center justify-between">
+                        <div className="lg:col-span-2 flex flex-col space-y-4 min-h-0">
+                          <div className="flex items-center justify-between pb-2 border-b border-slate-800/40 shrink-0">
                             <h3 className="text-sm font-bold uppercase tracking-wider font-orbitron flex items-center gap-2">
                               <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                              Your Submitted Referrals
+                              Your Submitted Referrals ({Array.isArray(userReferrals) ? userReferrals.length : 0})
                             </h3>
                             <button
                               onClick={() => fetchUserReferrals(userEmail)}
@@ -7990,67 +8027,75 @@ export default function App() {
                             </button>
                           </div>
 
-                          {isUserReferralLoading ? (
-                            <div className={`p-12 rounded-2xl border text-center text-xs flex flex-col items-center justify-center gap-2 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
-                              <span>Fetching referral records from database...</span>
-                            </div>
-                          ) : userReferrals.length === 0 ? (
-                            <div className={`p-12 rounded-2xl border text-center text-xs ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                              <AlertCircle className="w-7 h-7 mx-auto mb-2 text-slate-500" />
-                              <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No Referrals Registered</p>
-                              <p className="mt-1 text-slate-500">Fill the form on the left to register your first referral member.</p>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {userReferrals.map((ref: any, idx: number) => (
-                                <div key={idx} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-slate-200 shadow-sm'}`}>
-                                  <div className="flex items-center justify-between mb-3 border-b pb-2 border-slate-800/10">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-400">SL #{ref.slNo}</span>
-                                      <span className="text-[10px] text-slate-400">{cleanDateTime(ref.date)} {cleanDateTime(ref.time)}</span>
+                          <div 
+                            className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}
+                            style={{ maxHeight: '480px', minHeight: '320px' }}
+                          >
+                            {isUserReferralLoading ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
+                                <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                                <span>Fetching referral records from database...</span>
+                              </div>
+                            ) : userReferrals.length === 0 ? (
+                              <div className="flex-1 flex flex-col items-center justify-center text-center text-xs py-12 text-slate-500">
+                                <AlertCircle className="w-7 h-7 mx-auto mb-2 text-slate-500" />
+                                <p className="font-bold text-[10px] uppercase tracking-wider text-slate-400">No Referrals Registered</p>
+                                <p className="mt-1 text-slate-500">Fill the form on the left to register your first referral member.</p>
+                              </div>
+                            ) : (
+                              <div 
+                                className="space-y-4 flex-1 overflow-y-auto pr-1.5 custom-scrollbar"
+                                style={{ maxHeight: '440px', overflowY: 'auto' }}
+                              >
+                                {userReferrals.map((ref: any, idx: number) => (
+                                  <div key={idx} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-white border-slate-200 shadow-sm'}`}>
+                                    <div className="flex items-center justify-between mb-3 border-b pb-2 border-slate-800/10">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-400">SL #{ref.slNo}</span>
+                                        <span className="text-[10px] text-slate-400">{cleanDateTime(ref.date)} {cleanDateTime(ref.time)}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                                          ref.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
+                                          ref.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
+                                          'bg-amber-500/15 text-amber-400 border border-amber-500/20 animate-pulse'
+                                        }`}>
+                                          {ref.status || 'PENDING'}
+                                        </span>
+                                        <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
+                                          ref.refStatus === 'ACTIVE' ? 'bg-teal-500/15 text-teal-400 border border-teal-500/20' :
+                                          'bg-slate-800 text-slate-400'
+                                        }`}>
+                                          {ref.refStatus || 'INACTIVE'}
+                                        </span>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
-                                        ref.status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' :
-                                        ref.status === 'REJECTED' ? 'bg-rose-500/15 text-rose-400 border border-rose-500/20' :
-                                        'bg-amber-500/15 text-amber-400 border border-amber-500/20 animate-pulse'
-                                      }`}>
-                                        {ref.status || 'PENDING'}
-                                      </span>
-                                      <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase ${
-                                        ref.refStatus === 'ACTIVE' ? 'bg-teal-500/15 text-teal-400 border border-teal-500/20' :
-                                        'bg-slate-800 text-slate-400'
-                                      }`}>
-                                        {ref.refStatus || 'INACTIVE'}
-                                      </span>
-                                    </div>
-                                  </div>
 
-                                  <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                                    <div>
-                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Referral Name</span>
-                                      <span className="font-bold text-slate-200">{ref.referralName}</span>
+                                    <div className="grid grid-cols-2 gap-2 text-xs mb-2">
+                                      <div>
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Referral Name</span>
+                                        <span className="font-bold text-slate-200">{ref.referralName}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Referral Tier</span>
+                                        <span className="font-bold text-teal-400">{ref.referralTier}</span>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <span className="text-[9px] text-slate-400 uppercase tracking-wider block">Referral Tier</span>
-                                      <span className="font-bold text-teal-400">{ref.referralTier}</span>
-                                    </div>
-                                  </div>
 
-                                  <div className="text-xs text-slate-300 bg-slate-900/50 p-2.5 rounded-lg border border-slate-800/40 font-mono mb-2">
-                                    Registered Gmail: <span className="text-teal-400 font-bold">{ref.registeredGmail}</span>
-                                  </div>
-
-                                  {ref.reason && (
-                                    <div className="text-xs text-slate-400 italic">
-                                      Purpose: {ref.reason}
+                                    <div className="text-xs text-slate-300 bg-slate-900/50 p-2.5 rounded-lg border border-slate-800/40 font-mono mb-2">
+                                      Registered Gmail: <span className="text-teal-400 font-bold">{ref.registeredGmail}</span>
                                     </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
+
+                                    {ref.reason && (
+                                      <div className="text-xs text-slate-400 italic">
+                                        Purpose: {ref.reason}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -8420,95 +8465,106 @@ export default function App() {
                           Dispatched Courier Batches History ({(Array.isArray(courierList) ? courierList.length : 0)})
                         </h3>
 
-                        {courierLoading ? (
-                          <div className="text-center py-8 text-xs text-slate-400">Loading courier logs...</div>
-                        ) : (Array.isArray(courierList) ? courierList : []).length === 0 ? (
-                          <div className="p-6 rounded-xl border border-slate-800 bg-slate-950/40 text-center text-xs text-slate-500">
-                            No courier batches dispatched yet. Submit your first batch above!
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {(Array.isArray(courierList) ? courierList : []).map((item, idx) => (
-                              <div key={idx} className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 flex flex-col md:flex-row justify-between gap-4">
-                                <div className="space-y-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 font-mono text-[10px] font-black">
-                                      {item.batchNo}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-slate-400">
-                                      Date: {item.departureDate}
-                                    </span>
-                                    <span className="text-[10px] font-semibold text-slate-500">
-                                      By: {item.departuredBy}
-                                    </span>
-                                  </div>
-                                  <p className="text-xs font-bold text-slate-200 mt-1">
-                                    SIM: {item.simType} ({item.simNo}) • A/c: {item.totalAc} • ATM: {item.atmCards} • Platform: {item.platform}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400">
-                                    Gmail: {item.registeredGmail || 'N/A'} • Tracking: {item.trackingNo || 'N/A'} • PIN: {item.dispatchingPinCode || 'N/A'}
-                                  </p>
-                                  <p className="text-[10px] text-slate-500 truncate">
-                                    Address: {item.address}
-                                  </p>
-                                </div>
-
-                                <div className="flex flex-col md:items-end justify-between shrink-0 space-y-1">
-                                  <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider border ${
-                                    item.batchReceivedStatus === 'RECEIVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : item.batchReceivedStatus === 'REJECTED' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-                                  }`}>
-                                    Party Status: {item.batchReceivedStatus || 'PENDING'}
-                                  </span>
-                                  {item.receivingDate && (
-                                    <span className="text-[9px] text-slate-400">
-                                      Party Received: {item.receivingDate}
-                                    </span>
-                                  )}
-                                  {item.batchReturnedDate && (
-                                    <span className="text-[9px] text-teal-400 font-semibold">
-                                      Returned Date: {item.batchReturnedDate}
-                                    </span>
-                                  )}
-                                  <div className="pt-1">
-                                    {item.batchReturnedUserConfirmed ? (
-                                      <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded">
-                                        Confirmed by User ({item.batchReturnedUserConfirmed})
+                        <div 
+                          className={`p-4 rounded-xl border flex-1 flex flex-col min-h-0 ${darkMode ? 'bg-slate-950/20 border-slate-850' : 'bg-slate-50 border-slate-200'}`}
+                          style={{ maxHeight: '480px', minHeight: '220px' }}
+                        >
+                          {courierLoading ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-xs py-12 text-slate-400 gap-2">
+                              <span className="w-5 h-5 border-2 border-t-teal-400 border-r-transparent rounded-full animate-spin"></span>
+                              <span>Loading courier logs...</span>
+                            </div>
+                          ) : (Array.isArray(courierList) ? courierList : []).length === 0 ? (
+                            <div className="p-6 rounded-xl border border-slate-800 bg-slate-950/40 text-center text-xs text-slate-500">
+                              No courier batches dispatched yet. Submit your first batch above!
+                            </div>
+                          ) : (
+                            <div 
+                              className="space-y-3 flex-1 overflow-y-auto pr-1.5 custom-scrollbar"
+                              style={{ maxHeight: '440px', overflowY: 'auto' }}
+                            >
+                              {(Array.isArray(courierList) ? courierList : []).map((item, idx) => (
+                                <div key={idx} className="p-4 rounded-xl border border-slate-800 bg-slate-900/60 flex flex-col md:flex-row justify-between gap-4">
+                                  <div className="space-y-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="px-2 py-0.5 rounded bg-teal-500/10 border border-teal-500/30 text-teal-400 font-mono text-[10px] font-black">
+                                        {item.batchNo}
                                       </span>
-                                    ) : item.batchReturnedDate ? (
-                                      <button
-                                        onClick={async () => {
-                                          try {
-                                            const res = await callApi({
-                                              action: 'updateCourierUserConfirm',
-                                              email: userEmail,
-                                              batchNo: item.batchNo,
-                                              confirmStatus: 'CONFIRMED'
-                                            });
-                                            if (res.success) {
-                                              addNotification(`Batch ${item.batchNo} confirmed by user!`);
-                                              fetchUserCouriers(userEmail);
-                                            } else {
-                                              addNotification(res.message || 'Update failed.');
-                                            }
-                                          } catch (e) {
-                                            addNotification('Connection error.');
-                                          }
-                                        }}
-                                        className="px-2.5 py-1 rounded bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[9px] uppercase transition cursor-pointer"
-                                      >
-                                        Confirm Receipt
-                                      </button>
-                                    ) : (
-                                      <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded uppercase">
-                                        Awaiting Admin Return
+                                      <span className="text-[10px] font-bold text-slate-400">
+                                        Date: {item.departureDate}
+                                      </span>
+                                      <span className="text-[10px] font-semibold text-slate-500">
+                                        By: {item.departuredBy}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-200 mt-1">
+                                      SIM: {item.simType} ({item.simNo}) • A/c: {item.totalAc} • ATM: {item.atmCards} • Platform: {item.platform}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">
+                                      Gmail: {item.registeredGmail || 'N/A'} • Tracking: {item.trackingNo || 'N/A'} • PIN: {item.dispatchingPinCode || 'N/A'}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 truncate">
+                                      Address: {item.address}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex flex-col md:items-end justify-between shrink-0 space-y-1">
+                                    <span className={`px-2.5 py-1 rounded text-[9px] font-black uppercase tracking-wider border ${
+                                      item.batchReceivedStatus === 'RECEIVED' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : item.batchReceivedStatus === 'REJECTED' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                                    }`}>
+                                      Party Status: {item.batchReceivedStatus || 'PENDING'}
+                                    </span>
+                                    {item.receivingDate && (
+                                      <span className="text-[9px] text-slate-400">
+                                        Party Received: {item.receivingDate}
                                       </span>
                                     )}
+                                    {item.batchReturnedDate && (
+                                      <span className="text-[9px] text-teal-400 font-semibold">
+                                        Returned Date: {item.batchReturnedDate}
+                                      </span>
+                                    )}
+                                    <div className="pt-1">
+                                      {item.batchReturnedUserConfirmed ? (
+                                        <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded">
+                                          Confirmed by User ({item.batchReturnedUserConfirmed})
+                                        </span>
+                                      ) : item.batchReturnedDate ? (
+                                        <button
+                                          onClick={async () => {
+                                            try {
+                                              const res = await callApi({
+                                                action: 'updateCourierUserConfirm',
+                                                email: userEmail,
+                                                batchNo: item.batchNo,
+                                                confirmStatus: 'CONFIRMED'
+                                              });
+                                              if (res.success) {
+                                                addNotification(`Batch ${item.batchNo} confirmed by user!`);
+                                                fetchUserCouriers(userEmail);
+                                              } else {
+                                                addNotification(res.message || 'Update failed.');
+                                              }
+                                            } catch (e) {
+                                              addNotification('Connection error.');
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 rounded bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-[9px] uppercase transition cursor-pointer"
+                                        >
+                                          Confirm Receipt
+                                        </button>
+                                      ) : (
+                                        <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded uppercase">
+                                          Awaiting Admin Return
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -8563,7 +8619,10 @@ export default function App() {
                         </button>
                       </div>
 
-                      <div className="space-y-3">
+                      <div 
+                        className="space-y-3 overflow-y-auto pr-1.5 custom-scrollbar"
+                        style={{ maxHeight: '540px', overflowY: 'auto' }}
+                      >
                         {userTelemetryNotifications.length === 0 ? (
                           <div className="py-12 text-center rounded-xl border border-slate-850 bg-slate-950/40 text-slate-500 space-y-2">
                             <Bell className="w-8 h-8 mx-auto text-slate-600" />

@@ -5,8 +5,9 @@ const SUPABASE_ANON_KEY = "sb_publishable_iu-jlMAbcazlzAVvN2JoeQ_cGNIyryO";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Cloud Realtime Storage Endpoint for instant cross-device synchronization (PC <-> Mobile)
-const CLOUD_SECURITY_URL = "https://api.restful-api.dev/objects/ff808181a09d98f701a219a19966598f";
+// Primary Backend Endpoint for cross-device Security Registry (Blacklist & Devices)
+const GOOGLE_SCRIPT_SECURITY_URL = "https://script.google.com/macros/s/AKfycbyWl6DNXjJFA4jn5r1jlC4tNz9tu-JM4cFnRKIT7KzkcbAcgjz_iGQjhlIrm93RhvMxpA/exec";
+const SECURITY_REGISTRY_EMAIL = "security.system@crwo.org";
 
 // Helper to sanitize strings
 function safeStr(val: any): string {
@@ -87,29 +88,38 @@ const saveLocalCommunityLinks = (list: any[]) => {
 };
 
 // ----------------------------------------------------
-// REAL-TIME CLOUD SECURITY ENGINE (Global Shared Sync)
+// REAL-TIME CLOUD SECURITY ENGINE (Global Shared Sync via Google Apps Script)
 // ----------------------------------------------------
 async function fetchCloudSecurity(): Promise<{ blacklist: any[]; devices: any[] }> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(CLOUD_SECURITY_URL, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
+    const timer = setTimeout(() => controller.abort(), 4500);
+    const res = await fetch(`${GOOGLE_SCRIPT_SECURITY_URL}?action=getComplaints`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'getComplaints', email: SECURITY_REGISTRY_EMAIL }),
       signal: controller.signal
     });
     clearTimeout(timer);
     if (res.ok) {
       const json = await res.json();
-      const d = json.data || {};
-      const bl = Array.isArray(d.blacklist) ? d.blacklist : [];
-      const dev = Array.isArray(d.devices) ? d.devices : [];
-      saveLocalBlacklist(bl);
-      saveLocalDevices(dev);
-      return { blacklist: bl, devices: dev };
+      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+        const secEntries = json.data.filter((d: any) => d && (d.subject === 'SECURITY_REGISTRY' || safeStr(d.ticketId).startsWith('SEC-')));
+        const latestEntry = secEntries.length > 0 ? secEntries[secEntries.length - 1] : json.data[json.data.length - 1];
+        if (latestEntry && latestEntry.description) {
+          try {
+            const parsed = JSON.parse(latestEntry.description);
+            const bl = Array.isArray(parsed.blacklist) ? parsed.blacklist : [];
+            const dev = Array.isArray(parsed.devices) ? parsed.devices : [];
+            saveLocalBlacklist(bl);
+            saveLocalDevices(dev);
+            return { blacklist: bl, devices: dev };
+          } catch {}
+        }
+      }
     }
   } catch (err) {
-    // Fall back to local storage if offline
+    // Fall back to local storage if offline or timeout
   }
   return { blacklist: getLocalBlacklist(), devices: getLocalDevices() };
 }
@@ -117,13 +127,16 @@ async function fetchCloudSecurity(): Promise<{ blacklist: any[]; devices: any[] 
 async function pushCloudSecurity(blacklist: any[], devices: any[]): Promise<void> {
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 2500);
-    await fetch(CLOUD_SECURITY_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+    const timer = setTimeout(() => controller.abort(), 5000);
+    await fetch(`${GOOGLE_SCRIPT_SECURITY_URL}?action=addComplain`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
-        name: "crwo_security",
-        data: { blacklist, devices }
+        action: 'addComplain',
+        email: SECURITY_REGISTRY_EMAIL,
+        subject: 'SECURITY_REGISTRY',
+        ticketId: `SEC-${Date.now()}`,
+        description: JSON.stringify({ blacklist, devices })
       }),
       signal: controller.signal
     });
@@ -913,7 +926,7 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
       // 2. Pending across users (Complaints, Advances, KYC)
       const users: string[] = Array.isArray(usersRes?.data) ? usersRes.data : [];
       await Promise.all(users.map(async (email: string) => {
-        if (!email) return;
+        if (!email || safeLower(email) === 'security.system@crwo.org') return;
         try {
           const [compRes, advRes, kycRes] = await Promise.all([
             fallbackCallApi({ action: 'getComplaints', email }).catch(() => ({ success: false, data: [] })),
