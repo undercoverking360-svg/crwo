@@ -10342,13 +10342,13 @@ export default function App() {
                                   No extra community links yet. Default Discord is active on website.
                                 </div>
                               ) : (
-                                <div className="space-y-3 max-h-[450px] overflow-y-auto custom-scrollbar pr-1">
+                                <div className="space-y-3 max-h-[450px] overflow-y-auto overflow-x-hidden custom-scrollbar pr-1">
                                   {(Array.isArray(communityLinks) ? communityLinks : []).map((item: any) => (
                                     <div 
                                       key={item.id} 
                                       className="p-3.5 rounded-xl border border-slate-800 bg-slate-900/80 flex items-center justify-between gap-3"
                                     >
-                                      <div className="flex items-center gap-3">
+                                      <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
                                           {item.logo && typeof item.logo === 'string' && (item.logo.startsWith('http://') || item.logo.startsWith('https://') || item.logo.startsWith('data:')) ? (
                                             <img src={item.logo} alt={item.platform || 'Platform'} className="w-6 h-6 object-contain rounded" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
@@ -10356,12 +10356,12 @@ export default function App() {
                                             <MessageSquare className="w-5 h-5 text-teal-400" />
                                           )}
                                         </div>
-                                        <div>
+                                        <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-2">
-                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30 shrink-0">
                                               {item.platform}
                                             </span>
-                                            <span className="text-xs font-bold text-slate-200">
+                                            <span className="text-xs font-bold text-slate-200 truncate" title={item.title}>
                                               {item.title}
                                             </span>
                                           </div>
@@ -10369,25 +10369,32 @@ export default function App() {
                                             href={item.link} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
-                                            className="text-[10px] text-indigo-400 hover:underline font-mono truncate block max-w-[280px] mt-1"
+                                            className="text-[10px] text-indigo-400 hover:underline font-mono block mt-1"
+                                            title={item.link}
+                                            style={{
+                                              maxWidth: '100%',
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap'
+                                            }}
                                           >
                                             {item.link}
                                           </a>
                                         </div>
                                       </div>
 
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 shrink-0 ml-2">
                                         <a
                                           href={item.link}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="px-2.5 py-1 text-[10px] font-bold rounded bg-teal-500 text-slate-950 hover:bg-teal-400 transition"
+                                          className="px-2.5 py-1 text-[10px] font-bold rounded bg-teal-500 text-slate-950 hover:bg-teal-400 transition shrink-0"
                                         >
                                           Open
                                         </a>
                                         <button
                                           onClick={() => handleDeleteCommunityLink(item.id)}
-                                          className="p-1 rounded text-slate-500 hover:text-rose-400 transition cursor-pointer"
+                                          className="p-1 rounded text-slate-500 hover:text-rose-400 transition cursor-pointer shrink-0"
                                           title="Delete Link"
                                         >
                                           <Trash2 className="w-4 h-4" />
@@ -11595,8 +11602,8 @@ export default function App() {
 
       {/* COMMUNITY GROUPS & PLATFORMS MODAL */}
       {communityModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-4">
-          <div className={`w-full max-w-lg p-6 rounded-2xl border ${darkMode ? 'bg-slate-900 border-teal-500/30 text-white' : 'bg-white border-slate-200 text-slate-800'} shadow-2xl relative max-h-[85vh] flex flex-col`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md p-3 sm:p-4">
+          <div className={`w-full max-w-lg p-4 sm:p-6 rounded-2xl border ${darkMode ? 'bg-slate-900 border-teal-500/30 text-white' : 'bg-white border-slate-200 text-slate-800'} shadow-2xl relative max-h-[85vh] flex flex-col overflow-hidden`}>
             <button
               onClick={() => setCommunityModalOpen(false)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-200 font-bold cursor-pointer"
@@ -11608,31 +11615,31 @@ export default function App() {
               <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
                 <MessageSquare className="w-6 h-6" />
               </div>
-              <div>
-                <h3 className="text-base font-bold font-orbitron uppercase tracking-wider text-teal-400">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-base font-bold font-orbitron uppercase tracking-wider text-teal-400 truncate">
                   CRWO Community Hub
                 </h3>
-                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   Join official platforms & connect with member groups
                 </p>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3 pr-1">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar space-y-3 pr-1">
               {/* DEFAULT OFFICIAL DISCORD */}
-              <div className="p-4 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 to-slate-900/60 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
+              <div className="p-3.5 sm:p-4 rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 to-slate-900/60 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
                     <MessageSquare className="w-5 h-5" />
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 shrink-0">
                         DISCORD (PRIMARY)
                       </span>
                     </div>
-                    <p className="text-xs font-bold text-white mt-1">Official CRWO Discord Server</p>
-                    <p className="text-[10px] text-slate-400">Live Voice, Community Channels & Support</p>
+                    <p className="text-xs font-bold text-white mt-1 truncate">Official CRWO Discord Server</p>
+                    <p className="text-[10px] text-slate-400 truncate">Live Voice, Community Channels & Support</p>
                   </div>
                 </div>
                 <button
@@ -11657,7 +11664,7 @@ export default function App() {
                     key={item.id} 
                     className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${darkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'}`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
                         {item.logo && typeof item.logo === 'string' && (item.logo.startsWith('http://') || item.logo.startsWith('https://') || item.logo.startsWith('data:')) ? (
                           <img src={item.logo} alt={item.platform || 'Platform'} className="w-6 h-6 object-contain rounded" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
@@ -11665,12 +11672,23 @@ export default function App() {
                           <Users className="w-5 h-5 text-teal-400" />
                         )}
                       </div>
-                      <div>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-teal-500/20 text-teal-400 border border-teal-500/30 inline-block">
                           {item.platform}
                         </span>
-                        <p className="text-xs font-bold text-slate-200 mt-1">{item.title}</p>
-                        <p className="text-[10px] text-slate-400 truncate max-w-[200px]">{item.link}</p>
+                        <p className="text-xs font-bold text-slate-200 mt-1 truncate" title={item.title}>{item.title}</p>
+                        <p 
+                          className="text-[10px] text-slate-400 font-mono mt-0.5 block"
+                          title={item.link}
+                          style={{
+                            maxWidth: '100%',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          {item.link}
+                        </p>
                       </div>
                     </div>
 
@@ -11678,7 +11696,7 @@ export default function App() {
                       href={item.link}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 transition shrink-0"
+                      className="px-3 py-1.5 text-xs font-bold rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 transition shrink-0 ml-2"
                     >
                       Connect
                     </a>
