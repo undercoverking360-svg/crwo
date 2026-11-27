@@ -3147,9 +3147,9 @@ export default function App() {
                     CRWO
                   </span>
                   <span className={`px-1.5 py-0.2 text-[8px] font-semibold rounded ${
-                    isNativeAdminApp ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                    isNativeAdminApp ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' : isNativeUserApp ? 'bg-teal-500/15 text-teal-300 border border-teal-500/25' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
                   }`}>
-                    {isNativeAdminApp ? 'ADMIN' : 'V2.0'}
+                    {isNativeAdminApp ? 'ADMIN' : isNativeUserApp ? 'MEMBER' : 'V2.0'}
                   </span>
                 </div>
               </div>
@@ -3501,8 +3501,10 @@ export default function App() {
                 <span className={`text-xl font-bold font-orbitron tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   CRWO
                 </span>
-                <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                  V2.0
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                  isNativeAdminApp ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25' : isNativeUserApp ? 'bg-teal-500/15 text-teal-300 border border-teal-500/25' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                }`}>
+                  {isNativeAdminApp ? 'ADMIN' : isNativeUserApp ? 'MEMBER' : 'V2.0'}
                 </span>
               </div>
               <p className={`text-[10px] uppercase tracking-widest ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -3657,41 +3659,43 @@ export default function App() {
       </header>
 
       {/* DASHBOARD LAYOUT */}
-      <div className={`w-full px-4 sm:px-6 lg:px-8 py-8 ${isAdminNotificationOpen ? 'hidden' : ''}`}>
+      <div className={`w-full px-3 sm:px-6 lg:px-8 py-3 sm:py-8 ${isAdminNotificationOpen ? 'hidden' : ''}`}>
         
-        {/* MOBILE NAVIGATION BAR (horizontal scrollable, centered if admin app / single tab) */}
-        <div className={`lg:hidden w-full overflow-x-auto flex ${isNativeAdminApp || navItems.length === 1 ? 'justify-center' : ''} gap-2 pb-3 mb-5 shrink-0 select-none`}>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => { setActiveTab(item.id as any); if (item.id === 'courier' && userEmail) { fetchUserCouriers(userEmail); } }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
-                  isActive 
-                    ? (darkMode 
-                        ? 'bg-teal-500/10 text-teal-400 border-teal-500/20 glow-border' 
-                        : 'bg-blue-50 text-blue-700 border-blue-100') 
-                    : (darkMode 
-                        ? 'bg-slate-900/40 border-slate-800/80 text-slate-400 hover:text-white' 
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{item.mobileLabel || item.label}</span>
-                {item.alert && <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>}
-              </button>
-            );
-          })}
-        </div>
+        {/* MOBILE NAVIGATION BAR (horizontal scrollable, hidden if admin app before login) */}
+        {(!isNativeAdminApp || adminAuthenticated) && (
+          <div className={`lg:hidden w-full overflow-x-auto flex ${isNativeAdminApp || navItems.length === 1 ? 'justify-center' : ''} gap-2 pb-2 mb-4 shrink-0 select-none`}>
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => { setActiveTab(item.id as any); if (item.id === 'courier' && userEmail) { fetchUserCouriers(userEmail); } }}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 border ${
+                    isActive 
+                      ? (darkMode 
+                          ? 'bg-teal-500/10 text-teal-400 border-teal-500/20 glow-border' 
+                          : 'bg-blue-50 text-blue-700 border-blue-100') 
+                      : (darkMode 
+                          ? 'bg-slate-900/40 border-slate-800/80 text-slate-400 hover:text-white' 
+                          : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50')
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{item.mobileLabel || item.label}</span>
+                  {item.alert && <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div className={isNativeAdminApp ? "w-full" : "grid grid-cols-1 lg:grid-cols-4 gap-8"}>
 
           {/* SIDEBAR NAVIGATION (Hidden in Admin APK for full-width workspace) */}
           {!isNativeAdminApp && (
             <aside className="hidden lg:block lg:col-span-1">
-              <div className={`rounded-2xl border p-4 sticky top-24 ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
+              <div className={`rounded-2xl border p-4 sticky top-24 ${darkMode ? 'glass-card border-slate-800' : 'glass-card-light border-slate-200'}`}>
                 <p className={`text-[10px] font-bold uppercase tracking-widest px-3 mb-3 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                   Operational Terminal
                 </p>
@@ -3749,7 +3753,7 @@ export default function App() {
                 </div>
 
                 {/* Sidebar Footer Widget */}
-                <div className={`mt-6 pt-6 border-t ${darkMode ? 'border-slate-850' : 'border-slate-100'} text-xs`}>
+                <div className={`mt-6 pt-6 border-t ${darkMode ? 'border-slate-800' : 'border-slate-100'} text-xs`}>
                   <div className={`p-3.5 rounded-xl border flex flex-col gap-2 ${darkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex items-center gap-1.5 font-bold">
                       <UserCheck className={`w-3.5 h-3.5 ${userEmail ? 'text-emerald-400' : 'text-slate-500'}`} />
@@ -3782,21 +3786,27 @@ export default function App() {
 
           {/* MAIN CONTENT AREA */}
           <main className={isNativeAdminApp ? "w-full" : "lg:col-span-3"}>
-            <div className={`rounded-2xl border p-6 min-h-[500px] ${darkMode ? 'glass-card border-slate-850' : 'glass-card-light border-slate-200'}`}>
+            <div className={`rounded-2xl ${activeTab === 'admin' && !adminAuthenticated ? 'border-0 p-0' : 'border p-3.5 sm:p-6'} min-h-[500px] ${
+              activeTab === 'admin' && !adminAuthenticated 
+                ? '' 
+                : (darkMode ? 'glass-card border-slate-800' : 'glass-card-light border-slate-200')
+            }`}>
               {/* ADMIN VIEW */}
               {activeTab === 'admin' && !isNativeUserApp && (
                 !adminAuthenticated ? (
-                  <div className="max-w-md mx-auto py-8">
-                    <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200'}`}>
-                      <div className="text-center mb-6">
-                        <CrwoLogo className="w-48 h-48 mx-auto mb-4" />
-                        <h2 className="text-base font-bold uppercase tracking-wider font-orbitron">Admin Login Gate</h2>
-                        <p className={`text-xs mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <div className="w-full max-w-sm sm:max-w-md mx-auto py-3 sm:py-8 px-2 sm:px-0">
+                    <div className={`p-5 sm:p-7 rounded-2xl border shadow-2xl backdrop-blur-xl ${darkMode ? 'bg-slate-900/85 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      <div className="text-center mb-5">
+                        <div className="relative inline-block mx-auto mb-3">
+                          <CrwoLogo className="w-24 h-24 sm:w-32 sm:h-32 mx-auto drop-shadow-[0_0_20px_rgba(20,184,166,0.35)]" />
+                        </div>
+                        <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider font-orbitron text-white">Admin Login Gate</h2>
+                        <p className={`text-[11px] mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                           Secure Panel • CRWO personnel only.
                         </p>
                       </div>
 
-                      <div className="space-y-4">
+                      <div className="space-y-3.5">
                         <div>
                           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
                             Admin User ID / Email
@@ -3807,7 +3817,7 @@ export default function App() {
                             onChange={(e) => setAdminUser(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleAdminLogin(); }}
                             placeholder="Enter admin ID or email..."
-                            className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 focus:border-teal-500 text-slate-200 focus:outline-none' : 'bg-white border-slate-200 focus:border-blue-500 focus:outline-none'}`}
+                            className={`w-full px-3.5 py-2.5 text-xs rounded-xl border ${darkMode ? 'bg-slate-950/70 border-slate-800 focus:border-teal-400 text-slate-100 focus:outline-none' : 'bg-slate-50 border-slate-200 focus:border-blue-500 focus:outline-none'} transition-all`}
                           />
                         </div>
 
@@ -3821,12 +3831,12 @@ export default function App() {
                             onChange={(e) => setAdminPass(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') handleAdminLogin(); }}
                             placeholder="••••••••"
-                            className={`w-full px-3 py-2 text-xs rounded-lg border ${darkMode ? 'bg-slate-900 border-slate-800 focus:border-teal-500 text-slate-200 focus:outline-none' : 'bg-white border-slate-200 focus:border-blue-500 focus:outline-none'}`}
+                            className={`w-full px-3.5 py-2.5 text-xs rounded-xl border ${darkMode ? 'bg-slate-950/70 border-slate-800 focus:border-teal-400 text-slate-100 focus:outline-none' : 'bg-slate-50 border-slate-200 focus:border-blue-500 focus:outline-none'} transition-all`}
                           />
                         </div>
 
                         {adminError && (
-                          <div className={`p-2.5 rounded-lg border flex items-center gap-2 text-xs ${darkMode ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-rose-50 border-rose-200 text-rose-600'}`}>
+                          <div className={`p-2.5 rounded-xl border flex items-center gap-2 text-xs ${darkMode ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-rose-50 border-rose-200 text-rose-600'}`}>
                             <AlertCircle className="w-4 h-4 shrink-0" />
                             <span>{adminError}</span>
                           </div>
@@ -3835,13 +3845,16 @@ export default function App() {
                         <button 
                           onClick={() => handleAdminLogin()}
                           disabled={adminAuthLoading}
-                          className={`w-full py-2.5 text-xs font-bold rounded-lg text-center transition flex items-center justify-center gap-2 ${
-                            darkMode ? 'bg-teal-500 text-slate-950 hover:bg-teal-400 font-orbitron tracking-wider' : 'bg-blue-600 text-white hover:bg-blue-700'
-                          }`}
+                          style={{
+                            background: 'linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #06b6d4 100%)',
+                            color: '#ffffff',
+                            boxShadow: '0 4px 18px rgba(20, 184, 166, 0.4)'
+                          }}
+                          className="w-full py-2.5 sm:py-3 text-xs font-extrabold rounded-xl text-center transition-all duration-200 active:scale-98 flex items-center justify-center gap-2 font-orbitron tracking-wider cursor-pointer text-white shadow-lg"
                         >
                           {adminAuthLoading ? (
                             <>
-                              <span className="w-4 h-4 border-2 border-t-slate-950 border-r-transparent rounded-full animate-spin"></span>
+                              <span className="w-4 h-4 border-2 border-t-white border-r-transparent rounded-full animate-spin"></span>
                               <span>VERIFYING AUTHENTICATION...</span>
                             </>
                           ) : (
