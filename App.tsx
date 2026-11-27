@@ -801,6 +801,7 @@ export default function App() {
 
   // Dedicated Mobile App Download Modal state
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [downloadActiveTab, setDownloadActiveTab] = useState<'user' | 'admin'>('user');
 
   // Search Button Modal state
   const [searchModalOpen, setSearchModalOpen] = useState(false);
@@ -11571,28 +11572,28 @@ export default function App() {
 
       {/* DEDICATED APP DOWNLOADS MODAL */}
       {downloadModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className={`w-full max-w-4xl p-5 sm:p-7 rounded-3xl border shadow-2xl relative max-h-[92vh] overflow-y-auto custom-scrollbar ${
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className={`w-full max-w-4xl p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border shadow-2xl relative max-h-[92vh] overflow-y-auto custom-scrollbar flex flex-col ${
             darkMode ? 'bg-slate-900/95 border-teal-500/25 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
           }`}>
             
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b pb-4 mb-5 border-slate-800/80">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400">
-                  <Smartphone className="w-6 h-6 animate-pulse" />
+            <div className="flex items-start justify-between border-b pb-3 mb-3.5 sm:pb-4 sm:mb-4 border-slate-800/80">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-teal-500/10 border border-teal-500/20 text-teal-400 shrink-0">
+                  <Smartphone className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-bold font-orbitron uppercase tracking-wider text-teal-400">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <h2 className="text-base sm:text-xl font-bold font-orbitron uppercase tracking-wider text-teal-400">
                       CRWO Official Mobile Apps
                     </h2>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                    <span className="px-1.5 sm:px-2 py-0.2 sm:py-0.5 rounded-full text-[9px] sm:text-[10px] font-mono font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
                       v2.11.0
                     </span>
                   </div>
-                  <p className={`text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    High-performance native Android apps built for fast execution, offline stability & push notifications.
+                  <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    High-performance Android APKs with offline stability & push alerts.
                   </p>
                 </div>
               </div>
@@ -11600,55 +11601,81 @@ export default function App() {
               {/* Close Button */}
               <button 
                 onClick={() => setDownloadModalOpen(false)}
-                className={`p-2 rounded-xl border transition cursor-pointer ${
+                className={`p-1.5 sm:p-2 rounded-xl border transition cursor-pointer shrink-0 ${
                   darkMode ? 'border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white' : 'border-slate-200 hover:bg-slate-100 text-slate-600'
                 }`}
                 title="Close"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
 
-            {/* Apps Grid (2 Cards: User & Admin) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            {/* Mobile Segmented Tab Selector (Only on small screens) */}
+            <div className="flex md:hidden p-1 bg-slate-950/70 rounded-xl border border-slate-800/80 mb-3.5 shrink-0">
+              <button
+                onClick={() => setDownloadActiveTab('user')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  downloadActiveTab === 'user' 
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Member App</span>
+              </button>
+              <button
+                onClick={() => setDownloadActiveTab('admin')}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  downloadActiveTab === 'admin' 
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm' 
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                <span>Admin Console</span>
+              </button>
+            </div>
+
+            {/* Apps Grid (On desktop both cards side-by-side; on mobile active tab card is displayed) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5 mb-4">
               
               {/* CARD 1: CRWO Member App */}
-              <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden ${
+              <div className={`${downloadActiveTab === 'user' ? 'flex' : 'hidden md:flex'} p-3.5 sm:p-5 rounded-2xl border flex-col justify-between relative overflow-hidden ${
                 darkMode ? 'bg-slate-950/60 border-emerald-500/30 hover:border-emerald-500/50' : 'bg-slate-50 border-emerald-300'
               } transition-all duration-200`}>
-                <div className="absolute top-0 right-0 px-3 py-1 bg-emerald-500/15 border-b border-l border-emerald-500/30 rounded-bl-xl text-[9px] font-bold text-emerald-400 tracking-wider">
+                <div className="absolute top-0 right-0 px-2.5 py-0.5 sm:py-1 bg-emerald-500/15 border-b border-l border-emerald-500/30 rounded-bl-xl text-[8px] sm:text-[9px] font-bold text-emerald-400 tracking-wider">
                   ● FOR MEMBERS
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-bold">
+                  <div className="flex items-center gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 font-bold shrink-0">
                       <CreditCard className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white font-orbitron">CRWO Member Portal</h3>
+                      <h3 className="text-sm sm:text-base font-bold text-white font-orbitron">CRWO Member Portal</h3>
                       <p className="text-[10px] text-emerald-400 font-mono">CRWO-User.apk • 4.1 MB</p>
                     </div>
                   </div>
 
-                  <p className={`text-xs leading-relaxed mb-4 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                    Complete member suite with fast KYC submissions, Welfare Plans, Cheque Desk tracking, Salary Advance requests, and instant system push notifications.
+                  <p className={`text-[11px] sm:text-xs leading-relaxed mb-3 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    Complete member suite with fast KYC, Welfare Plans, Cheque Desk, Salary Advance requests, and real-time push alerts.
                   </p>
 
-                  <div className={`space-y-2 mb-5 p-3 rounded-xl border text-[11px] ${
+                  <div className={`space-y-1.5 mb-4 p-2.5 sm:p-3 rounded-xl border text-[10px] sm:text-[11px] ${
                     darkMode ? 'bg-slate-900/60 border-slate-800/80 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
                   }`}>
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span><strong>No Admin/Traffic tabs:</strong> 100% focused on user needs</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                      <span><strong>No Admin/Traffic tabs:</strong> 100% focused on members</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
                       <span><strong>Push Notifications:</strong> Real-time alerts on ticket updates</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span><strong>Equal-Height Layout:</strong> Dedicated custom scrollbars</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>
+                      <span><strong>Equal-Height Layout:</strong> Smooth custom scrollbars</span>
                     </div>
                   </div>
                 </div>
@@ -11657,49 +11684,54 @@ export default function App() {
                   href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.0/CRWO-User.apk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-emerald-500/20 active:scale-98 cursor-pointer"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #059669 0%, #10b981 50%, #06b6d4 100%)', 
+                    color: '#ffffff',
+                    boxShadow: '0 4px 18px rgba(16, 185, 129, 0.45)' 
+                  }}
+                  className="w-full py-2.5 sm:py-3.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer text-white"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download Member App (4.1 MB)</span>
+                  <Download className="w-4 h-4 text-white stroke-[2.5] shrink-0" />
+                  <span style={{ color: '#ffffff' }} className="text-white font-extrabold tracking-wide drop-shadow-md">DOWNLOAD MEMBER APP (4.1 MB)</span>
                 </a>
               </div>
 
               {/* CARD 2: CRWO Admin Console */}
-              <div className={`p-5 rounded-2xl border flex flex-col justify-between relative overflow-hidden ${
+              <div className={`${downloadActiveTab === 'admin' ? 'flex' : 'hidden md:flex'} p-3.5 sm:p-5 rounded-2xl border flex-col justify-between relative overflow-hidden ${
                 darkMode ? 'bg-slate-950/60 border-rose-500/30 hover:border-rose-500/50' : 'bg-slate-50 border-rose-300'
               } transition-all duration-200`}>
-                <div className="absolute top-0 right-0 px-3 py-1 bg-rose-500/15 border-b border-l border-rose-500/30 rounded-bl-xl text-[9px] font-bold text-rose-400 tracking-wider">
+                <div className="absolute top-0 right-0 px-2.5 py-0.5 sm:py-1 bg-rose-500/15 border-b border-l border-rose-500/30 rounded-bl-xl text-[8px] sm:text-[9px] font-bold text-rose-400 tracking-wider">
                   🛡️ OFFICIAL ONLY
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 font-bold">
+                  <div className="flex items-center gap-2.5 sm:gap-3 mb-2.5 sm:mb-3">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-center text-rose-400 font-bold shrink-0">
                       <ShieldAlert className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-base font-bold text-white font-orbitron">CRWO Admin Terminal</h3>
+                      <h3 className="text-sm sm:text-base font-bold text-white font-orbitron">CRWO Admin Terminal</h3>
                       <p className="text-[10px] text-rose-400 font-mono">CRWO-Admin.apk • 4.1 MB</p>
                     </div>
                   </div>
 
-                  <p className={`text-xs leading-relaxed mb-4 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                  <p className={`text-[11px] sm:text-xs leading-relaxed mb-3 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                     High-security administration terminal with full-width Operations Dashboard, Members Registry, Bank Account Status, Clearance Desks, Security Blacklist, and Live Telemetry.
                   </p>
 
-                  <div className={`space-y-2 mb-5 p-3 rounded-xl border text-[11px] ${
+                  <div className={`space-y-1.5 mb-4 p-2.5 sm:p-3 rounded-xl border text-[10px] sm:text-[11px] ${
                     darkMode ? 'bg-slate-900/60 border-slate-800/80 text-slate-300' : 'bg-white border-slate-200 text-slate-700'
                   }`}>
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0"></span>
                       <span><strong>Isolated Workspace:</strong> Zero user login or tab clutter</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0"></span>
                       <span><strong>Security Registry:</strong> Descending cloud ledger sync</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 shrink-0"></span>
                       <span><strong>Full Operations:</strong> Direct Traffic & Search Gateway</span>
                     </div>
                   </div>
@@ -11709,38 +11741,55 @@ export default function App() {
                   href="https://github.com/undercoverking360-svg/crwo/releases/download/v2.11.0/CRWO-Admin.apk"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-400 hover:to-amber-400 text-slate-950 flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-rose-500/20 active:scale-98 cursor-pointer"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #e11d48 0%, #f43f5e 50%, #fb7185 100%)', 
+                    color: '#ffffff',
+                    boxShadow: '0 4px 18px rgba(225, 29, 72, 0.5)' 
+                  }}
+                  className="w-full py-2.5 sm:py-3.5 px-3 rounded-xl font-extrabold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 cursor-pointer text-white"
                 >
-                  <Download className="w-4 h-4" />
-                  <span>Download Admin App (4.1 MB)</span>
+                  <Download className="w-4 h-4 text-white stroke-[2.5] shrink-0" />
+                  <span style={{ color: '#ffffff' }} className="text-white font-extrabold tracking-wide drop-shadow-md">DOWNLOAD ADMIN APP (4.1 MB)</span>
                 </a>
               </div>
 
             </div>
 
             {/* Installation Instructions Box */}
-            <div className={`p-4 rounded-2xl border text-xs leading-relaxed ${
+            <div className={`p-3 sm:p-4 rounded-xl sm:rounded-2xl border text-xs leading-relaxed ${
               darkMode ? 'bg-slate-950/40 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
             }`}>
-              <div className="flex items-center gap-2 font-bold uppercase tracking-wider text-teal-400 mb-2">
-                <Info className="w-4 h-4" />
-                <span>How to Install on Android</span>
+              <div className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-teal-400 mb-1.5 text-[11px]">
+                <Info className="w-3.5 h-3.5" />
+                <span>Quick Android Install Guide</span>
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-[11px]">
-                <li>Tap the green or red button above to download your required APK.</li>
-                <li>Open the downloaded <code className="px-1.5 py-0.5 rounded bg-slate-800 text-teal-300 font-mono">.apk</code> file from your browser downloads or Files app.</li>
-                <li>If Android or Chrome asks for permission, tap <strong>"Settings"</strong> and toggle <strong>"Allow from this source"</strong>.</li>
-                <li>If Google Play Protect displays a prompt, tap <strong>"More details"</strong> → <strong>"Install anyway"</strong> (our APK is signed directly with our developer keystore).</li>
-              </ol>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2 text-[10px] sm:text-[11px]">
+                <div className="flex items-start gap-1.5">
+                  <span className="font-bold text-teal-400">1.</span>
+                  <span>Tap button above to download required APK.</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="font-bold text-teal-400">2.</span>
+                  <span>Open downloaded <code className="px-1 py-0.2 rounded bg-slate-800 text-teal-300 font-mono">.apk</code> file from notifications/Files.</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="font-bold text-teal-400">3.</span>
+                  <span>If prompted, tap <strong>Settings → Allow from this source</strong>.</span>
+                </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="font-bold text-teal-400">4.</span>
+                  <span>On Play Protect, tap <strong>More details → Install anyway</strong>.</span>
+                </div>
+              </div>
             </div>
 
             {/* Bottom Actions */}
-            <div className="mt-5 pt-4 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 font-mono">
+            <div className="mt-3.5 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[10px] sm:text-[11px] text-slate-500 font-mono">
               <span>Android 7.0 to 15+ Supported • v2/v3 Signed</span>
               <button
                 onClick={() => setDownloadModalOpen(false)}
-                className={`px-4 py-1.5 rounded-lg border font-bold text-xs transition cursor-pointer ${
-                  darkMode ? 'border-slate-800 hover:bg-slate-850 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
+                className={`px-3.5 py-1.5 rounded-lg border font-bold text-xs transition cursor-pointer ${
+                  darkMode ? 'border-slate-800 hover:bg-slate-800 text-slate-300' : 'border-slate-200 hover:bg-slate-100 text-slate-700'
                 }`}
               >
                 Close
