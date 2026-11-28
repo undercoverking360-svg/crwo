@@ -50,7 +50,7 @@ sed -i 's/jvmToolchain(21)/jvmToolchain(17)/g' node_modules/@capacitor/local-not
 
 rm -rf android/app/build/outputs/apk/release
 cd android
-./gradlew assembleRelease
+./gradlew assembleRelease --max-workers=2
 cd ..
 
 RELEASE_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
@@ -94,7 +94,7 @@ sed -i 's/jvmToolchain(21)/jvmToolchain(17)/g' node_modules/@capacitor/local-not
 
 rm -rf android/app/build/outputs/apk/release
 cd android
-./gradlew assembleRelease
+./gradlew assembleRelease --max-workers=2
 cd ..
 
 RELEASE_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"

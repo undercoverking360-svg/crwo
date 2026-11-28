@@ -941,6 +941,8 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
         if (b && String(b.batchReceivedStatus || '').toUpperCase() === 'PENDING') {
           pending.push({
             id: `pending-courier-${b.batchNo || b.slNo || Math.random()}`,
+            batchNo: b.batchNo || '',
+            slNo: b.slNo,
             email: b.email,
             userId: b.departuredBy || 'MEMBER',
             title: `Courier Batch #${b.batchNo || b.slNo} Pending Confirmation`,
@@ -971,6 +973,8 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
             if (st === 'PENDING' || st === 'OPEN') {
               pending.push({
                 id: `pending-complain-${c.ticketId || c.slNo || email}`,
+                ticketId: c.ticketId,
+                slNo: c.slNo,
                 email,
                 userId: c.odUserId || 'MEMBER',
                 title: `Support Ticket #${c.ticketId || 'TKT'}: ${c.subject || 'Inquiry'}`,
@@ -990,6 +994,7 @@ export const callSupabase = async (data: any, fallbackCallApi: (d: any) => Promi
             if (cst.includes('PENDING')) {
               pending.push({
                 id: `pending-advance-${a.slNo || email}-${a.date || ''}`,
+                slNo: a.slNo,
                 email,
                 userId: a.odUserId || 'MEMBER',
                 title: `Advance Claim: ₹${a.requestedAmount || a.amount || '0'} (${a.bankName || 'Bank'})`,

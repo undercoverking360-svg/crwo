@@ -1653,26 +1653,9 @@ export default function App() {
         totalTurnover: advTotalTurnover, requestedAmount: advRequestedAmount, purpose: advPurpose
       });
       if (res.success) {
-        addNotification('Advance request submitted!');
-        const reqAmt = advRequestedAmount;
-        const bName = advBankName;
-        const purp = advPurpose;
+        addNotification('Advance request submitted successfully!');
         setAdvBankName(''); setAdvTotalTurnover(''); setAdvRequestedAmount(''); setAdvPurpose('');
         fetchUserAdvances(userEmail);
-        try {
-          const newNotif = {
-            id: `notif-adv-submitted-${Date.now()}`,
-            title: `Advance Claim Submitted: ₹${reqAmt}`,
-            message: `Bank: ${bName} • Purpose: ${purp || 'Emergency Advance'} • Awaiting Admin approval.`,
-            type: 'advance',
-            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'PENDING'
-          };
-          const saved = localStorage.getItem('crwo_user_telemetry');
-          const list = saved ? JSON.parse(saved) : [];
-          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
-          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
-        } catch (e) {}
       } else { addNotification(res.message || 'Failed.'); }
     } catch (err) { console.error(err); addNotification('Connection error.'); }
     finally { setAdvSubmitLoading(false); }
@@ -1690,7 +1673,7 @@ export default function App() {
       });
       if (res.success) {
         addNotification('Advance claim updated!');
-        setAdminPendingRequests(prev => prev.filter(p => !(p.email.toLowerCase() === selectedEntryUser.toLowerCase() && p.type === 'advance')));
+        setAdminPendingRequests(prev => prev.filter(p => !((Number(p.slNo) === Number(slNo) || p.email.toLowerCase() === selectedEntryUser.toLowerCase()) && p.type === 'advance')));
         sendNativePushNotification(
           'CRWO Advance Update',
           `Advance Claim for ${selectedEntryUser} marked ${adminAdvClaimStatus}!`
@@ -1712,6 +1695,7 @@ export default function App() {
         setAdminAdvClaimStatus('PENDING'); setAdminAdvPaymentDate(''); setAdminAdvPaymentTime('');
         setAdminAdvPaymentUtr(''); setAdminAdvRejectionReason(''); setAdminAdvSelectedSlNo(null);
         fetchSelectedUserAdvances(selectedEntryUser);
+        fetchAdminPendingRequests();
       } else { addNotification(res.message || 'Update failed.'); }
     } catch (err) { console.error(err); addNotification('Connection error.'); }
     finally { setAdminAdvSubmitLoading(false); }
@@ -1808,20 +1792,6 @@ export default function App() {
       if (res.success) {
         addNotification('Registration & KYC details submitted successfully!');
         fetchUserKyc(userEmail);
-        try {
-          const newNotif = {
-            id: `notif-kyc-submitted-${Date.now()}`,
-            title: 'KYC Documents Submitted',
-            message: `Full Name: ${kycFullName} • Aadhar: ${kycAadharNo} • Awaiting Admin verification.`,
-            type: 'kyc',
-            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'PENDING'
-          };
-          const saved = localStorage.getItem('crwo_user_telemetry');
-          const list = saved ? JSON.parse(saved) : [];
-          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
-          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
-        } catch (e) {}
       } else {
         addNotification(res.message || 'Failed to submit KYC.');
       }
@@ -1865,6 +1835,7 @@ export default function App() {
           setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
         } catch (e) {}
         fetchSelectedUserKyc(selectedEntryUser);
+        fetchAdminPendingRequests();
       } else {
         addNotification(res.message || 'Failed to update KYC.');
       }
@@ -2081,20 +2052,6 @@ export default function App() {
         const desc = complainDescription;
         setComplainDescription('');
         fetchUserComplaints(userEmail);
-        try {
-          const newNotif = {
-            id: `notif-comp-submitted-${Date.now()}`,
-            title: `Complaint Ticket Raised: ${ticketId}`,
-            message: `Subject: ${sub || 'General Inquiry'} • Details: ${desc.slice(0, 90)}... (Awaiting Admin reply)`,
-            type: 'complain',
-            timestamp: new Date().toLocaleDateString('en-GB') + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'PENDING'
-          };
-          const saved = localStorage.getItem('crwo_user_telemetry');
-          const list = saved ? JSON.parse(saved) : [];
-          localStorage.setItem('crwo_user_telemetry', JSON.stringify([newNotif, ...list.slice(0, 19)]));
-          setUserTelemetryNotifications(prev => [newNotif, ...prev.slice(0, 19)]);
-        } catch (e) {}
       } else { addNotification(res.message || 'Failed to submit complaint.'); }
     } catch (err) { console.error(err); addNotification('Connection error.'); }
     finally { setComplainSubmitLoading(false); }
@@ -2112,7 +2069,7 @@ export default function App() {
       });
       if (res.success) {
         addNotification(`Ticket ${ticketId} updated!`);
-        setAdminPendingRequests(prev => prev.filter(p => !(p.email.toLowerCase() === selectedEntryUser.toLowerCase() && p.type === 'complain')));
+        setAdminPendingRequests(prev => prev.filter(p => !((p.ticketId === ticketId || p.email.toLowerCase() === selectedEntryUser.toLowerCase()) && p.type === 'complain')));
         sendNativePushNotification(
           'CRWO Support Ticket Update',
           `Support Ticket #${ticketId} marked ${adminComplainStatus} by Admin!`
@@ -2134,6 +2091,7 @@ export default function App() {
         setAdminComplainStatus('PENDING'); setAdminComplainReply('');
         setAdminComplainSelectedTicketId(null);
         fetchSelectedUserComplaints(selectedEntryUser);
+        fetchAdminPendingRequests();
       } else { addNotification(res.message || 'Update failed.'); }
     } catch (err) { console.error(err); addNotification('Connection error.'); }
     finally { setAdminComplainSubmitLoading(false); }
@@ -2244,7 +2202,7 @@ export default function App() {
   useEffect(() => {
     if (!adminAuthenticated) return;
     fetchAdminPendingRequests();
-    const interval = setInterval(fetchAdminPendingRequests, 20000);
+    const interval = setInterval(fetchAdminPendingRequests, 15000);
     return () => clearInterval(interval);
   }, [adminAuthenticated]);
 
@@ -2259,6 +2217,174 @@ export default function App() {
       fetchSelectedUserKyc(selectedEntryUser);
     }
   }, [selectedEntryUser]);
+
+  // Real-time synchronization for Admin Status Update Form
+  useEffect(() => {
+    if (adminComplainSelectedTicketId && Array.isArray(selectedUserComplaints)) {
+      const match = selectedUserComplaints.find(c => c && c.ticketId === adminComplainSelectedTicketId);
+      if (match) {
+        if (match.status) setAdminComplainStatus(match.status as any);
+        if (match.adminReply) setAdminComplainReply(match.adminReply);
+      }
+    }
+  }, [adminComplainSelectedTicketId, selectedUserComplaints]);
+
+  useEffect(() => {
+    if (adminAdvSelectedSlNo !== null && Array.isArray(selectedUserAdvances)) {
+      const match = selectedUserAdvances.find(a => a && Number(a.slNo) === Number(adminAdvSelectedSlNo));
+      if (match) {
+        if (match.claimStatus) setAdminAdvClaimStatus(match.claimStatus as any);
+        if (match.paymentDate) setAdminAdvPaymentDate(match.paymentDate);
+        if (match.paymentTime) setAdminAdvPaymentTime(match.paymentTime);
+        if (match.paymentUtr) setAdminAdvPaymentUtr(match.paymentUtr);
+        if (match.rejectionReason) setAdminAdvRejectionReason(match.rejectionReason);
+      }
+    }
+  }, [adminAdvSelectedSlNo, selectedUserAdvances]);
+
+  useEffect(() => {
+    if (adminSelectedBatchNo && Array.isArray(adminCourierList)) {
+      const match = adminCourierList.find(c => c && c.batchNo === adminSelectedBatchNo);
+      if (match) {
+        setAdminCReceivedBy(match.receivedBy || '');
+        setAdminCReceivingDate(match.receivingDate || new Date().toISOString().split('T')[0]);
+        setAdminCReceivingPin(match.receivingPinCode || '');
+        setAdminCReceivingAddress(match.receivingAddress || '');
+        setAdminCBatchStatus(match.batchReceivedStatus || 'RECEIVED');
+        setAdminCBatchReturnDate(match.batchReturnedDate || '');
+      }
+    }
+  }, [adminSelectedBatchNo, adminCourierList]);
+
+  // Periodic real-time background sync for logged-in User
+  useEffect(() => {
+    if (!userEmail) return;
+    const interval = setInterval(() => {
+      fetchUserComplaints(userEmail);
+      fetchUserAdvances(userEmail);
+      fetchUserKyc(userEmail);
+      fetchUserCheques(userEmail);
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [userEmail]);
+
+  // Real-time Server-Derived User Telemetry Notifications
+  useEffect(() => {
+    if (!userEmail) return;
+
+    const notifs: any[] = [];
+
+    // 1. Complaint updates (Resolved, Verifying, Rejected, or having Admin Reply)
+    if (Array.isArray(userComplaints)) {
+      userComplaints.forEach((c: any) => {
+        if (!c || !c.ticketId) return;
+        const st = String(c.status || '').toUpperCase();
+        if (c.adminReply || st === 'RESOLVED' || st === 'VERIFYING' || st === 'REJECTED') {
+          notifs.push({
+            id: `user-notif-comp-${c.ticketId}-${st}-${c.adminReply ? 'replied' : 'status'}`,
+            title: `Complaint #${c.ticketId}: ${st || 'RESOLVED'}`,
+            message: c.adminReply ? `Admin Reply: "${c.adminReply}"` : `Your complaint status has been updated to ${st}.`,
+            type: 'support',
+            timestamp: c.replyDateTime || `${c.date || ''} ${c.time || ''}`.trim() || 'Recent',
+            status: st === 'RESOLVED' ? 'RESOLVED' : 'INFO'
+          });
+        }
+      });
+    }
+
+    // 2. Advance claim updates (Settled, Rejected)
+    if (Array.isArray(userAdvances)) {
+      userAdvances.forEach((a: any) => {
+        if (!a || a.slNo === undefined) return;
+        const cst = String(a.claimStatus || '').toUpperCase();
+        if (cst && !cst.includes('PENDING')) {
+          notifs.push({
+            id: `user-notif-adv-${a.slNo}-${cst}`,
+            title: `Advance Request (SL #${a.slNo}): ${cst}`,
+            message: cst === 'SETTLED'
+              ? `Advance of ₹${a.requestedAmount || '0'} approved & settled.${a.paymentUtr ? ` UTR: ${a.paymentUtr}` : ''}`
+              : `Advance request marked ${cst}.${a.rejectionReason ? ` Reason: ${a.rejectionReason}` : ''}`,
+            type: 'advance',
+            timestamp: a.paymentDate || `${a.date || ''} ${a.time || ''}`.trim() || 'Recent',
+            status: cst === 'SETTLED' ? 'RESOLVED' : 'INFO'
+          });
+        }
+      });
+    }
+
+    // 3. KYC document updates (Verified or Rejected)
+    if (userKyc && typeof userKyc === 'object') {
+      const kst = String(userKyc.status || userKyc.kycStatus || '').toUpperCase();
+      if (kst && kst !== 'PENDING') {
+        notifs.push({
+          id: `user-notif-kyc-${kst}`,
+          title: `KYC Document: ${kst}`,
+          message: kst === 'VERIFIED'
+            ? 'Your KYC documents have been successfully verified and approved by CRWO.'
+            : `KYC status marked ${kst}.${userKyc.rejectionReason ? ` Reason: ${userKyc.rejectionReason}` : ''}`,
+          type: 'kyc',
+          timestamp: userKyc.verifiedDate || userKyc.date || 'Recent',
+          status: kst === 'VERIFIED' ? 'RESOLVED' : 'INFO'
+        });
+      }
+    }
+
+    // 4. Cheque updates (Dispatched, Cleared, Paid)
+    if (Array.isArray(userCheques)) {
+      userCheques.forEach((ch: any) => {
+        if (!ch || !ch.chequeNo) return;
+        const cst = String(ch.status || '').toUpperCase();
+        if (cst && cst !== 'ISSUED' && cst !== 'PENDING') {
+          notifs.push({
+            id: `user-notif-cheque-${ch.chequeNo}-${cst}`,
+            title: `Cheque #${ch.chequeNo}: ${cst}`,
+            message: `Bank: ${ch.bankName || 'CRWO'} • Amount: ₹${ch.chequeAmount || '0'}${ch.trackingNo ? ` • Tracking: ${ch.trackingNo}` : ''}`,
+            type: 'system',
+            timestamp: ch.date || 'Recent',
+            status: cst === 'PAID' || cst === 'CLEARED' ? 'RESOLVED' : 'INFO'
+          });
+        }
+      });
+    }
+
+    // Merge with any community / guide / broadcast announcements stored in localStorage
+    try {
+      const raw = localStorage.getItem('crwo_user_telemetry');
+      const stored = raw ? JSON.parse(raw) : [];
+      // Clean out obsolete pending items:
+      const cleanStored = Array.isArray(stored)
+        ? stored.filter((s: any) => s && s.status !== 'PENDING' && !s.id?.startsWith('notif-comp-submitted') && !s.id?.startsWith('notif-adv-submitted') && !s.id?.startsWith('notif-kyc-submitted'))
+        : [];
+
+      const combined = [...notifs];
+      cleanStored.forEach((cs: any) => {
+        if (!combined.some(c => c.id === cs.id || (c.title === cs.title && c.message === cs.message))) {
+          combined.push(cs);
+        }
+      });
+
+      // Send Native Push Notification for newly detected items
+      const prevIdsRaw = localStorage.getItem('crwo_notified_ids');
+      const prevIds: string[] = prevIdsRaw ? JSON.parse(prevIdsRaw) : [];
+      let newCount = 0;
+      combined.forEach((n) => {
+        if (!prevIds.includes(n.id)) {
+          prevIds.push(n.id);
+          newCount++;
+          sendNativePushNotification(n.title, n.message);
+        }
+      });
+      if (newCount > 0) {
+        localStorage.setItem('crwo_notified_ids', JSON.stringify(prevIds.slice(-100)));
+      }
+
+      setUserTelemetryNotifications(combined);
+      localStorage.setItem('crwo_user_telemetry', JSON.stringify(combined.slice(0, 30)));
+    } catch (e) {
+      console.warn('Error merging user telemetry:', e);
+      setUserTelemetryNotifications(notifs);
+    }
+  }, [userComplaints, userAdvances, userKyc, userCheques, userEmail]);
 
   useEffect(() => {
     try {
@@ -2984,24 +3110,35 @@ export default function App() {
                   <div
                     key={req.id}
                     onClick={() => {
+                      setActiveTab('admin');
                       setAdminFormTab(req.moduleTab || 'entry');
                       setSelectedEntryUser(req.email);
                       setIsAdminNotificationOpen(false);
 
-                      // Hide touched request from telemetry feed immediately
-                      setAdminPendingRequests(prev => prev.filter(p => p.id !== req.id));
-
-                      // Persist dismissal in localStorage so it stays hidden in this session
-                      try {
-                        const raw = localStorage.getItem('crwo_admin_dismissed_pending');
-                        const dismissed: string[] = raw ? JSON.parse(raw) : [];
-                        if (!dismissed.includes(req.id)) {
-                          dismissed.push(req.id);
-                          localStorage.setItem('crwo_admin_dismissed_pending', JSON.stringify(dismissed.slice(-100)));
+                      // Preload selection for instant status update form
+                      if (req.moduleTab === 'complain' || req.type === 'complain') {
+                        if (req.ticketId) {
+                          setAdminComplainSelectedTicketId(req.ticketId);
+                          setAdminComplainStatus('PENDING');
+                          setAdminComplainReply('');
                         }
-                      } catch (e) {}
+                        fetchSelectedUserComplaints(req.email);
+                      } else if (req.moduleTab === 'advance' || req.type === 'advance') {
+                        if (req.slNo !== undefined && req.slNo !== null) {
+                          setAdminAdvSelectedSlNo(Number(req.slNo));
+                          setAdminAdvClaimStatus('PENDING');
+                        }
+                        fetchSelectedUserAdvances(req.email);
+                      } else if (req.moduleTab === 'kyc' || req.type === 'kyc') {
+                        fetchSelectedUserKyc(req.email);
+                      } else if (req.moduleTab === 'courier' || req.type === 'courier') {
+                        if (req.batchNo) {
+                          setAdminSelectedBatchNo(req.batchNo);
+                        }
+                        fetchAdminCouriers();
+                      }
 
-                      addNotification(`Loaded ${req.title} for ${req.userId || req.email}`);
+                      addNotification(`Redirected to ${req.title} for ${req.userId || req.email}`);
                     }}
                     className="p-4 rounded-2xl border border-slate-800 bg-slate-900/80 hover:border-amber-500/60 hover:bg-slate-900 active:scale-[0.99] transition-all duration-200 cursor-pointer text-left space-y-2 group shadow-lg"
                   >
@@ -3009,9 +3146,29 @@ export default function App() {
                       <span className="text-[11px] font-black uppercase tracking-widest font-mono text-teal-400">
                         {req.userId || 'MEMBER'}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/50 text-amber-300">
-                        ● PENDING
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 border border-amber-500/50 text-amber-300">
+                          ● PENDING
+                        </span>
+                        <button
+                          title="Dismiss notification"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAdminPendingRequests(prev => prev.filter(p => p.id !== req.id));
+                            try {
+                              const raw = localStorage.getItem('crwo_admin_dismissed_pending');
+                              const dismissed: string[] = raw ? JSON.parse(raw) : [];
+                              if (!dismissed.includes(req.id)) {
+                                dismissed.push(req.id);
+                                localStorage.setItem('crwo_admin_dismissed_pending', JSON.stringify(dismissed.slice(-100)));
+                              }
+                            } catch (err) {}
+                          }}
+                          className="p-1 rounded-full text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <div className="text-sm font-bold text-slate-100 group-hover:text-amber-300 transition">
                       {req.title}
@@ -5371,7 +5528,9 @@ export default function App() {
                                   });
                                   if (res.success) {
                                     addNotification(`Batch ${adminSelectedBatchNo} updated successfully!`);
+                                    setAdminPendingRequests(prev => prev.filter(p => !(p.batchNo === adminSelectedBatchNo && p.type === 'courier')));
                                     fetchAdminCouriers();
+                                    fetchAdminPendingRequests();
                                   } else {
                                     addNotification(res.message || 'Update failed.');
                                   }
